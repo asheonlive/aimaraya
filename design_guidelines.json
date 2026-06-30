@@ -1,0 +1,161 @@
+{
+  "project_name": "Godly AI Studio",
+  "app_type": "hybrid_fullstack",
+  "theme": "dark",
+  "archetype": "5_luxury_cinematic",
+  "design_philosophy": {
+    "core_principles": [
+      "Fusion over Imitation: Combine high-end fashion editorial aesthetics with technical AI tooling.",
+      "Emotion First: The studio must feel limitless and premium. Use deep shadows and striking focal points.",
+      "Content is King: The generated AI art is the hero. UI must recede, acting as an elegant frame.",
+      "Zoom In: Use large, immersive image previews.",
+      "Contrast: Absolute black backgrounds with razor-sharp electric accents."
+    ],
+    "anti_patterns": [
+      "No center-aligned text walls.",
+      "No Inter, Space Grotesk, or standard generic SaaS fonts.",
+      "No standard Bootstrap columns. Use asymmetric Bento Grids.",
+      "No muddy gray backgrounds. Use absolute deep blacks or tinted obsidians.",
+      "No full-screen gradients.",
+      "No generic 'Vercel-look' Shadcn components. Override with aggressive borders and typography."
+    ]
+  },
+  "typography": {
+    "font_families": {
+      "headings": "Clash Display, sans-serif",
+      "body": "Satoshi, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "hierarchy": {
+      "h1": "text-5xl sm:text-6xl+ font-medium tracking-tighter leading-none",
+      "h2": "text-3xl sm:text-4xl font-medium tracking-tight",
+      "h3": "text-xl sm:text-2xl font-medium tracking-tight",
+      "body": "text-base leading-relaxed font-light",
+      "small_labels": "text-xs font-bold uppercase tracking-[0.2em]"
+    }
+  },
+  "color_palette": {
+    "background": {
+      "main": "#050505",
+      "surface": "#121212",
+      "surface_glass": "rgba(5, 5, 5, 0.65)"
+    },
+    "text": {
+      "primary": "#F4F4F5",
+      "secondary": "#A1A1AA",
+      "muted": "#52525B"
+    },
+    "border": {
+      "default": "#27272A",
+      "focus": "#E1FF01"
+    },
+    "accents": {
+      "primary": "#E1FF01",
+      "primary_hover": "#C8E600",
+      "primary_text": "#050505",
+      "magic": "linear-gradient(135deg, #FF3B30, #E1FF01)",
+      "danger": "#FF3B30",
+      "success": "#34C759"
+    }
+  },
+  "spacing_and_layout": {
+    "system": "Generous Spacing Philosophy (Tailwind Scale)",
+    "containers": "Padding p-8 or p-12 minimum for cards with borders. No text collision.",
+    "grids": {
+      "marketing": "Mode A: The Tetris Grid. Asymmetric spanning. grid-cols-1 md:grid-cols-12 gap-8.",
+      "studio": "Mode B: The Control Room Grid. Dense. grid-cols-1 lg:grid-cols-4 gap-4. 100% height utilization."
+    }
+  },
+  "components_strategy": {
+    "general": "Always use pure HTML + Tailwind for macro layouts. Use heavily customized Shadcn UI for interactive logic.",
+    "buttons": {
+      "primary": "bg-[#E1FF01] text-black font-medium tracking-tight rounded-none px-8 py-4 hover:-translate-y-1 transition-transform shadow-[0_0_15px_rgba(225,255,1,0.3)]",
+      "secondary": "bg-transparent border border-[#27272A] text-white rounded-none px-8 py-4 hover:bg-white/5",
+      "magic_generate": "bg-black border-2 border-[#E1FF01] text-[#E1FF01] rounded-none hover:bg-[#E1FF01] hover:text-black transition-all duration-300"
+    },
+    "cards": "Flat background (#121212), 1px solid border (#27272A), sharp corners (rounded-none or max rounded-md), zero shadow. On hover: slight border brightness increase.",
+    "inputs": "Shadcn components heavily modified. Background black, 1px border. Focus state must have 2px #E1FF01 ring.",
+    "navigation": "Crystal Glassmorphism. backdrop-blur-2xl bg-[#050505]/70 border-b border-white/10. Sticky top.",
+    "dialogs_and_modals": "Dark overlay (bg-black/80 backdrop-blur-sm), solid #121212 surface for the modal, sharp borders.",
+    "toast": "Sonner toast. Dark mode, sharp borders, minimal."
+  },
+  "motion_and_interaction": {
+    "hover": "All interactive elements must change state. Buttons lift (-translate-y-1), borders brighten.",
+    "transitions": "Use specific properties: transition-colors duration-200, transition-transform duration-300 ease-out.",
+    "scroll": "Implement smooth scrolling via Lenis. Marquees for community generations using react-fast-marquee.",
+    "accessibility": "Respect prefers-reduced-motion. High contrast focus rings."
+  },
+  "pages_and_views": {
+    "landing_page": {
+      "hero": "Immersive dark hero. Abstract glowing orb background (opacity 30%). Massive H1. Primary CTA.",
+      "model_showcase": "Bento Grid (Tetris Mode). Showcasing Midjourney v8, Sora 2, FLUX, etc. Large visual thumbnails.",
+      "features": "Grid borders layout (Technical look).",
+      "pricing": "Tracing Beam effect on the 'Pro' card. Stripe checkout integration markers.",
+      "marquee": "Kinetic Texture marquee with 'GENERATE BEYOND LIMITS' outlined text."
+    },
+    "models_catalog": {
+      "layout": "Grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6.",
+      "filters": "Shadcn Tabs (Image vs Video) and Select (Categories: Realistic, Anime, Cinematic, NSFW-Spicy).",
+      "cards": "Model name, tag (Image/Video), brief description. Hover plays video snippet or expands image."
+    },
+    "generation_studio": {
+      "layout": "Control Room Grid. No scrolling on desktop (h-screen minus header).",
+      "left_panel": "col-span-1. Prompt textarea, Model Select (Dropdown), Aspect Ratio (Shadcn Slider/Toggle Group), Image Reference Upload.",
+      "center_canvas": "col-span-2. The 'Output'. Large, glassmorphic container displaying the generated asset or loading state.",
+      "right_panel": "col-span-1. Generation History. Tall narrow list (Feed/List mode)."
+    },
+    "user_dashboard": {
+      "layout": "Standard dashboard. Sidebar nav. Metric cards (Credits remaining).",
+      "sections": "Subscription status (Stripe portal link), Personal Gallery."
+    }
+  },
+  "models_to_feature": [
+    {"name": "Nano Banana", "type": "Image", "category": "Artistic"},
+    {"name": "GPT Image 1", "type": "Image", "category": "Realistic"},
+    {"name": "FLUX", "type": "Image", "category": "Cinematic"},
+    {"name": "Midjourney v7", "type": "Image", "category": "Creative"},
+    {"name": "Midjourney v8", "type": "Image", "category": "Hyper-Realistic"},
+    {"name": "Sora 2", "type": "Video", "category": "Cinematic"},
+    {"name": "Veo 3", "type": "Video", "category": "High-Fidelity"},
+    {"name": "Kling", "type": "Video", "category": "Action"},
+    {"name": "Seedance", "type": "Video", "category": "Animation"},
+    {"name": "Grok Imagine", "type": "Image", "category": "Unrestricted"},
+    {"name": "Wan 2.7", "type": "Video", "category": "Surreal"},
+    {"name": "HappyHorse", "type": "Video", "category": "Experimental"}
+  ],
+  "testing_requirements": {
+    "data_testid": "MANDATORY. All buttons, links, form inputs, model selectors, and Stripe buttons must have a kebab-case data-testid (e.g., data-testid='generate-art-button')."
+  },
+  "media_assets": {
+    "hero_background": {
+      "url": "https://images.pexels.com/photos/12784315/pexels-photo-12784315.jpeg",
+      "description": "Abstract glowing orb, perfect for a subtle, high-end dark background overlay.",
+      "usage": "Landing page hero background, opacity 20-30%."
+    },
+    "model_examples_cinematic": {
+      "url": "https://images.pexels.com/photos/34742154/pexels-photo-34742154.jpeg",
+      "description": "Cinematic portrait with dark aesthetic.",
+      "usage": "Example generation for FLUX or Midjourney v8 model card."
+    },
+    "model_examples_surreal": {
+      "url": "https://images.pexels.com/photos/28617020/pexels-photo-28617020.jpeg",
+      "description": "Mysterious masked figure in shadows.",
+      "usage": "Example generation for Grok Imagine or Wan 2.7."
+    },
+    "model_examples_anime": {
+      "url": "https://images.pexels.com/photos/13825479/pexels-photo-13825479.jpeg",
+      "description": "Anime aesthetic sunset street.",
+      "usage": "Example generation for Seedance or Midjourney v7 Anime style."
+    },
+    "model_examples_product": {
+      "url": "https://images.unsplash.com/photo-1662350688742-0d52a8e71fea",
+      "description": "Hyper realistic product photography of a drill.",
+      "usage": "Example generation for GPT Image 1."
+    }
+  },
+  "icon_library": "lucide-react",
+  "external_integrations": [
+    "Stripe (Checkout for Pro/Premium tiers)",
+    "Authentication (JWT or NextAuth equivalent)"
+  ]
+}
