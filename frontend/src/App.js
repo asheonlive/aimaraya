@@ -1,56 +1,45 @@
-import { useEffect } from "react";
-import "@/App.css";
+import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
-import { HOME } from "@/constants/testIds";
+import { Toaster } from "sonner";
+import { AuthProvider } from "@/lib/auth";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import Landing from "@/pages/Landing";
+import Models from "@/pages/Models";
+import Studio from "@/pages/Studio";
+import Dashboard from "@/pages/Dashboard";
+import Pricing from "@/pages/Pricing";
+import Auth from "@/pages/Auth";
+import Success from "@/pages/Success";
+import Explore from "@/pages/Explore";
+import "@/App.css";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
+function Shell({ children, hideFooter }) {
   return (
-    <div>
-      <header className="App-header">
-        <a
-          data-testid={HOME.emergentLink}
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
-
-function App() {
-  return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+    <div className="min-h-screen flex flex-col bg-[#050505] text-[#f4f4f5] grain">
+      <Navbar />
+      <main className="flex-1 relative z-10">{children}</main>
+      {!hideFooter && <Footer />}
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Toaster theme="dark" position="top-right" />
+        <Routes>
+          <Route path="/" element={<Shell><Landing /></Shell>} />
+          <Route path="/models" element={<Shell><Models /></Shell>} />
+          <Route path="/explore" element={<Shell><Explore /></Shell>} />
+          <Route path="/studio" element={<Shell hideFooter><Studio /></Shell>} />
+          <Route path="/dashboard" element={<Shell><Dashboard /></Shell>} />
+          <Route path="/pricing" element={<Shell><Pricing /></Shell>} />
+          <Route path="/auth" element={<Shell><Auth /></Shell>} />
+          <Route path="/success" element={<Shell><Success /></Shell>} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}

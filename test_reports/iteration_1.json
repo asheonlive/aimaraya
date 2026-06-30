@@ -1,0 +1,61 @@
+{
+  "summary": "Tested Maraya AI MVP end-to-end. Backend: 14/17 passed (1 skipped intentionally; 2 failures stem from one real bug + one cascading flake). Frontend: register -> studio generation -> pricing flow all functional. CRITICAL bug found: /api/generate returns media_url with internal HTTP host (cluster-5.preview.emergentcf.cloud:80) instead of public HTTPS host, causing Mixed Content warnings on the live HTTPS site and making the image URL unreachable from external HTTP clients. Image rendering currently works in-browser only because Chromium permissively loads insecure <img> resources, but downloads, social sharing, and any non-browser consumer will fail.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/generate",
+        "issue": "media_url is built from request.base_url which resolves to the internal forwarded URL http://ai-canvas-151.cluster-5.preview.emergentcf.cloud (HTTP, port 80). The same file is reachable at https://ai-canvas-151.preview.emergentagent.com/api/media/<file> (verified 200 image/jpeg). Fix: either return a relative URL (/api/media/<file>) and let the frontend prefix REACT_APP_BACKEND_URL, OR build media_url from an explicit PUBLIC_BASE_URL env var, OR honor X-Forwarded-Proto/Host headers when constructing the URL.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "POST /api/generate",
+        "issue": "Intermittent upstream 500 from emergentintegrations LlmChat: 'Budget has been exceeded! Current cost: 0.0, Max budget: 0.0'. Observed once on a cold start; succeeded on retry within the same suite. Consider adding a single automatic retry on this specific upstream error before refunding credits."
+      },
+      {
+        "endpoint": "POST /api/generate",
+        "issue": "Insufficient-credits guard (402) was not asserted live (drain test skipped to avoid burning the shared LLM key). Logic looks correct via atomic find_one_and_update with $gte guard."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Studio image rendering / Download",
+        "issue": "Browser logs 'Mixed Content: The page at https://... was loaded over HTTPS, but requested an insecure element http://ai-canvas-151.cluster-5.preview.emergentcf.cloud/api/media/...'. Image still appears because Chromium auto-upgrades or allows it, but the Download anchor href is HTTP and will be blocked/insecure for users; right-click 'Save image as' will hit a non-routable HTTP host.",
+        "affected_selectors": ["[data-testid='studio-result-image']", "[data-testid='studio-download']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "FIX media_url construction in /api/generate so the URL uses the public HTTPS origin. Simplest: return media_url as relative path '/api/media/<file>' and have the frontend prefix REACT_APP_BACKEND_URL. Persist it the same way in db.generations so /api/generations and /api/explore also return safe URLs.",
+    "Backfill existing db.generations records' media_url (rewrite to relative path) so already-created history items render under HTTPS.",
+    "Optional: add a single retry on LlmChat 'Budget has been exceeded' transient errors before refunding."
+  ],
+  "critical_code_review_comments": [
+    "server.py:212-213 - str(request.base_url) returns the upstream-forwarded URL with internal hostname/scheme; use X-Forwarded-Proto + Host or a PUBLIC_BASE_URL env, or return a relative URL. This is the root cause of the mixed-content bug.",
+    "server.py:336 - /api/explore strips user_id (good) but the (raw) filename field is also stripped; OK. However media_url is still included with internal host - same bug surfaces in Explore.",
+    "server.py:188-237 - Long try/except with refund logic mixed in; consider extracting to a service function for readability.",
+    "Stripe webhook (server.py:313-331) does not verify the signature against an environment-configured webhook secret; emergentintegrations may handle this, but worth confirming the secret is rotated for production.",
+    "auth.register returns 200 on success - REST convention would be 201; not blocking but minor.",
+    "No rate limiting on /api/generate - a malicious user can hammer the endpoint repeatedly; per-user/IP throttling recommended."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (created)",
+    "/app/memory/test_credentials.md (created)"
+  ],
+  "success_rate": {"backend": "82% (14/17 pass, 1 skip, 2 fail caused by 1 underlying bug)", "frontend": "100% on smoke flow (landing -> auth -> studio generation -> pricing). Mixed Content warning noted."},
+  "test_credentials": "Auto-generated per run: qa+<rand>@maraya.ai / TestPass123!. Live UI test account this run: qa+ui<rand>@maraya.ai (20 starting credits, ended at 19 after one successful nano-banana generation).",
+  "seed_data_creation": "Created ~2 test users and 1 successful image generation (Gemini Nano Banana) and 1 Stripe checkout session in test mode during this run.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend tests live at /app/backend/tests/backend_test.py and use BASE_URL from REACT_APP_BACKEND_URL. The test_generate_nano_banana test will keep failing until media_url is HTTPS public. After fix, also verify GET on the returned media_url returns 200 image/* from outside the cluster. UI flow (register -> studio -> generate -> pricing) is otherwise working end-to-end.",
+  "rca of the issue": "PROBLEM: media_url in /api/generate is http://ai-canvas-151.cluster-5.preview.emergentcf.cloud/api/media/<file>. STEPS TO REPRODUCE: 1) Register, 2) POST /api/generate {model_id:'nano-banana', prompt:'...'}, 3) Inspect response.generation.media_url - it's HTTP with internal host. 4) GET that URL from any external client -> connect timeout. RCA: line 212 builds media_url from str(request.base_url). When FastAPI is behind an ingress that strips/forwards, base_url reflects the upstream forwarded URL (HTTP, internal hostname), not the public URL. MITIGATION: return media_url as relative path '/api/media/<file>' and let the frontend prepend REACT_APP_BACKEND_URL (cleanest). Alternative: read X-Forwarded-Proto / X-Forwarded-Host headers or a PUBLIC_BASE_URL env var to construct the absolute URL."
+}
