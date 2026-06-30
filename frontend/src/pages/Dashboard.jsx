@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api } from "@/lib/api";
+import { api, resolveMedia } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { ArrowUpRight, Zap } from "lucide-react";
 
@@ -58,7 +58,7 @@ export default function Dashboard() {
           {history.map(g => (
             <div key={g.id} className="border border-[#27272A] hover:border-[#E1FF01] hover-lift group">
               <div className="aspect-square overflow-hidden">
-                <img src={g.media_url} alt={g.prompt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <img src={resolveMedia(g.media_url)} alt={g.prompt} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </div>
               <div className="p-3">
                 <div className="text-xs text-[#A1A1AA] truncate">{g.prompt}</div>

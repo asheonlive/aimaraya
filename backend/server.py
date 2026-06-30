@@ -208,9 +208,9 @@ async def generate(req: GenerateReq, request: Request, user=Depends(current_user
         with open(filepath, "wb") as f:
             f.write(base64.b64decode(img["data"]))
 
-        # Build public URL via the same request host (production-safe)
-        base = str(request.base_url).rstrip("/")
-        media_url = f"{base}/api/media/{filename}"
+        # Use a relative URL so the public REACT_APP_BACKEND_URL prefix on the
+        # frontend resolves to the correct HTTPS origin (ingress strips/forwards).
+        media_url = f"/api/media/{filename}"
 
         gen_doc = {
             "id": gen_id,

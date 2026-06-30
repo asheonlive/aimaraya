@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, resolveMedia } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -124,7 +124,7 @@ export default function Studio() {
             </div>
           )}
           {!loading && result && (
-            <img src={result.media_url} alt={result.prompt} data-testid="studio-result-image" className="w-full h-full object-contain" />
+            <img src={resolveMedia(result.media_url)} alt={result.prompt} data-testid="studio-result-image" className="w-full h-full object-contain" />
           )}
           {!loading && !result && (
             <div className="text-center px-8">
@@ -135,7 +135,7 @@ export default function Studio() {
           )}
         </div>
         {result && (
-          <a href={result.media_url} download target="_blank" rel="noreferrer" data-testid="studio-download" className="mt-6 inline-flex items-center gap-2 border border-[#27272A] hover:border-[#E1FF01] px-6 py-3 text-sm">
+          <a href={resolveMedia(result.media_url)} download target="_blank" rel="noreferrer" data-testid="studio-download" className="mt-6 inline-flex items-center gap-2 border border-[#27272A] hover:border-[#E1FF01] px-6 py-3 text-sm">
             <Download className="w-4 h-4" /> Download
           </a>
         )}
@@ -153,7 +153,7 @@ export default function Studio() {
             {history.map(g => (
               <button key={g.id} onClick={() => setResult(g)} data-testid={`history-${g.id}`} className="block w-full text-left group">
                 <div className="aspect-square overflow-hidden border border-[#27272A] group-hover:border-[#E1FF01]">
-                  <img src={g.media_url} alt={g.prompt} className="w-full h-full object-cover" />
+                  <img src={resolveMedia(g.media_url)} alt={g.prompt} className="w-full h-full object-cover" />
                 </div>
                 <div className="text-xs text-[#A1A1AA] mt-1 truncate">{g.prompt}</div>
               </button>

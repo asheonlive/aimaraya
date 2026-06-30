@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, resolveMedia } from "@/lib/api";
 
 export default function Explore() {
   const [items, setItems] = useState([]);
@@ -15,7 +15,7 @@ export default function Explore() {
         <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
           {items.map(g => (
             <div key={g.id} className="break-inside-avoid border border-[#27272A] hover:border-[#E1FF01] hover-lift">
-              <img src={g.media_url} alt={g.prompt} className="w-full" />
+              <img src={resolveMedia(g.media_url)} alt={g.prompt} className="w-full" />
               <div className="p-3">
                 <div className="text-xs text-[#A1A1AA] line-clamp-2">{g.prompt}</div>
                 <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#52525B] mt-1">{g.model_name}</div>
