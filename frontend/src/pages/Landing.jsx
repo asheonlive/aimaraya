@@ -11,7 +11,7 @@ const FEATURE_IMAGES = {
   hero: "https://images.pexels.com/photos/12784315/pexels-photo-12784315.jpeg",
 };
 
-const MARQUEE = ["NANO BANANA", "MIDJOURNEY V8", "SORA 2", "VEO 3.1", "FLUX PRO", "KLING 2", "GROK IMAGINE", "SEEDANCE", "WAN 2.7", "GPT IMAGE 1"];
+const MARQUEE = ["NANO BANANA", "SORA 2", "FLUX 1.1 ULTRA", "VEO 3.1", "KLING 2.5", "GROK IMAGINE", "IDEOGRAM V4", "SEEDANCE", "GPT IMAGE 1", "RECRAFT V4", "HAILUO"];
 
 export default function Landing() {
   const [models, setModels] = useState([]);
@@ -26,14 +26,14 @@ export default function Landing() {
         <div className="absolute inset-0 bg-grid opacity-50" />
         <div className="relative max-w-7xl mx-auto px-6 lg:px-10 pt-24 pb-32">
           <div className="flex items-center gap-3 mb-8 fade-in">
-            <span className="px-3 py-1 border border-[#E1FF01]/40 text-[#E1FF01] text-xs font-mono uppercase tracking-[0.2em]">Now serving 15+ frontier models</span>
+            <span className="px-3 py-1 border border-[#E1FF01]/40 text-[#E1FF01] text-xs font-mono uppercase tracking-[0.2em]">Now serving 26 frontier models</span>
           </div>
           <h1 className="font-display text-5xl sm:text-6xl lg:text-8xl font-medium tracking-tighter leading-[0.9] max-w-5xl">
             Every <span className="text-[#E1FF01]">famous</span> AI<br/>
             model. One studio.
           </h1>
           <p className="mt-8 text-lg text-[#A1A1AA] max-w-2xl leading-relaxed">
-            Maraya AI is the professional creative platform that brings together Nano Banana, Midjourney v8, Sora 2, Veo 3.1, FLUX, Kling, Grok Imagine and more — under one subscription.
+            Maraya AI is the professional creative platform that brings together Sora 2, Veo 3.1, FLUX 1.1 Ultra, Kling, Ideogram, Nano Banana, Grok Imagine, GPT Image 1 and 20+ more — under one subscription.
           </p>
           <div className="mt-10 flex flex-wrap gap-4">
             <Link to="/auth?mode=register" data-testid="hero-getstarted" className="bg-[#E1FF01] text-black font-medium px-8 py-4 hover:-translate-y-1 transition-transform shadow-[0_0_30px_rgba(225,255,1,0.25)] inline-flex items-center gap-2">
@@ -45,7 +45,7 @@ export default function Landing() {
           </div>
           <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-px bg-[#27272A] border border-[#27272A]">
             {[
-              { k: "15+", v: "Frontier models" },
+              { k: "26", v: "Frontier models" },
               { k: "4K", v: "Max resolution" },
               { k: "120s", v: "Video clips" },
               { k: "∞", v: "Style possibilities" },
@@ -78,16 +78,16 @@ export default function Landing() {
             <h2 className="font-display text-4xl md:text-5xl tracking-tighter max-w-2xl">A model for every aesthetic.</h2>
           </div>
           <Link to="/models" data-testid="landing-allmodels" className="text-sm border-b border-[#E1FF01] text-[#E1FF01] pb-1 hover:gap-3 inline-flex items-center gap-2 transition-all">
-            All 15+ models <ArrowUpRight className="w-4 h-4" />
+            All 26 models <ArrowUpRight className="w-4 h-4" />
           </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-          <BentoCard className="md:col-span-7 md:row-span-2" img={FEATURE_IMAGES.cinematic} title="Midjourney v8" tag="Hyper-Realistic" credits={5} type="Image" />
+          <BentoCard className="md:col-span-7 md:row-span-2" img={FEATURE_IMAGES.cinematic} title="FLUX 1.1 Ultra" tag="Hyper-Realistic" credits={4} type="Image" />
           <BentoCard className="md:col-span-5" img={FEATURE_IMAGES.product} title="Nano Banana" tag="Artistic" credits={1} type="Image" highlight />
-          <BentoCard className="md:col-span-5" img={FEATURE_IMAGES.anime} title="Midjourney Niji" tag="Anime" credits={4} type="Image" />
+          <BentoCard className="md:col-span-5" img={FEATURE_IMAGES.anime} title="Ideogram V4" tag="Typography" credits={3} type="Image" />
           <BentoCard className="md:col-span-6" img={FEATURE_IMAGES.surreal} title="Sora 2" tag="Cinematic Video" credits={12} type="Video" />
-          <BentoCard className="md:col-span-6" img={FEATURE_IMAGES.hero} title="Veo 3.1" tag="High Fidelity" credits={11} type="Video" />
+          <BentoCard className="md:col-span-6" img={FEATURE_IMAGES.hero} title="Veo 3.1 Fast" tag="High Fidelity" credits={11} type="Video" />
         </div>
       </section>
 
