@@ -2,6 +2,7 @@
 import os
 import uuid
 import base64
+import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -10,18 +11,25 @@ from typing import Optional, List
 import jwt
 import bcrypt
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Header
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
 
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 from emergentintegrations.payments.stripe.checkout import (
     StripeCheckout,
     CheckoutSessionRequest,
 )
+
+from models_catalog import (
+    MODELS,
+    public_catalog,
+    find_model,
+    build_comfy_workflow,
+)
+from comfy_cloud_client import ComfyCloudClient, ComfyCloudError, collect_output_files
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -42,14 +50,21 @@ db = client[DB_NAME]
 
 app = FastAPI(title="Maraya AI API")
 api = APIRouter(prefix="/api")
-
-# Serve generated media
 app.mount("/api/media", StaticFiles(directory=str(GENERATED_DIR)), name="media")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("maraya")
 
-# ---------- Models ----------
+# Comfy client singleton
+comfy = ComfyCloudClient(
+    api_key=os.environ.get("COMFY_API_KEY", ""),
+    base_url=os.environ.get("COMFY_BASE_URL", "https://cloud.comfy.org"),
+    email=os.environ.get("COMFY_EMAIL", ""),
+    password=os.environ.get("COMFY_PASSWORD", ""),
+    firebase_api_key=os.environ.get("COMFY_FIREBASE_API_KEY", ""),
+)
+
+# ---------- Schemas ----------
 class RegisterReq(BaseModel):
     email: EmailStr
     password: str
@@ -61,36 +76,16 @@ class LoginReq(BaseModel):
 
 class GenerateReq(BaseModel):
     prompt: str
-    model_id: str = "nano-banana"  # frontend selector
+    model_id: str = "nano-banana"
     aspect_ratio: Optional[str] = "1:1"
 
 class CheckoutReq(BaseModel):
     package_id: str
     origin_url: str
 
-# ---------- Catalog ----------
-MODELS_CATALOG = [
-    {"id": "nano-banana", "name": "Nano Banana", "type": "image", "category": "Artistic", "credits": 1, "available": True, "tagline": "Fast, vivid Gemini image gen", "engine": "gemini-3.1-flash-image-preview"},
-    {"id": "nano-banana-pro", "name": "Nano Banana Pro", "type": "image", "category": "Hyper-Realistic", "credits": 2, "available": True, "tagline": "Premium Gemini image model", "engine": "gemini-3-pro-image-preview"},
-    {"id": "gpt-image-1", "name": "GPT Image 1", "type": "image", "category": "Realistic", "credits": 3, "available": False, "tagline": "OpenAI's flagship image model"},
-    {"id": "flux", "name": "FLUX", "type": "image", "category": "Cinematic", "credits": 3, "available": False, "tagline": "Cinematic detail"},
-    {"id": "flux-pro-ultra", "name": "FLUX Pro Ultra", "type": "image", "category": "Cinematic", "credits": 4, "available": False, "tagline": "Maximum quality"},
-    {"id": "midjourney-v7", "name": "Midjourney v7", "type": "image", "category": "Creative", "credits": 4, "available": False, "tagline": "Artistic mastery"},
-    {"id": "midjourney-v8", "name": "Midjourney v8", "type": "image", "category": "Hyper-Realistic", "credits": 5, "available": False, "tagline": "Latest artistic frontier"},
-    {"id": "midjourney-niji", "name": "Midjourney Niji", "type": "image", "category": "Anime", "credits": 4, "available": False, "tagline": "Anime style perfection"},
-    {"id": "grok-imagine", "name": "Grok Imagine", "type": "image", "category": "Unrestricted", "credits": 3, "available": False, "tagline": "xAI uncensored creativity"},
-    {"id": "sora-2", "name": "Sora 2", "type": "video", "category": "Cinematic", "credits": 12, "available": False, "tagline": "OpenAI cinematic video"},
-    {"id": "veo-3", "name": "Veo 3", "type": "video", "category": "High-Fidelity", "credits": 10, "available": False, "tagline": "Google's flagship video AI"},
-    {"id": "veo-3.1", "name": "Veo 3.1", "type": "video", "category": "High-Fidelity", "credits": 11, "available": False, "tagline": "Latest Veo with audio"},
-    {"id": "kling", "name": "Kling 2.0", "type": "video", "category": "Action", "credits": 8, "available": False, "tagline": "Cinematic motion control"},
-    {"id": "seedance", "name": "Seedance", "type": "video", "category": "Animation", "credits": 8, "available": False, "tagline": "Reference-driven character video"},
-    {"id": "wan-2.7", "name": "Wan 2.7", "type": "video", "category": "Surreal", "credits": 7, "available": False, "tagline": "Surreal cinematic audio"},
-    {"id": "happyhorse", "name": "HappyHorse", "type": "video", "category": "Experimental", "credits": 6, "available": False, "tagline": "Experimental motion AI"},
-]
-
 PACKAGES = {
     "starter": {"name": "Starter", "amount": 9.00, "currency": "usd", "credits": 100},
-    "pro": {"name": "Pro", "amount": 29.00, "currency": "usd", "credits": 500},
+    "pro":     {"name": "Pro",     "amount": 29.00, "currency": "usd", "credits": 500},
     "premium": {"name": "Premium", "amount": 99.00, "currency": "usd", "credits": 2000},
 }
 
@@ -98,8 +93,8 @@ PACKAGES = {
 def hash_pw(pw: str) -> str:
     return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
 
-def verify_pw(pw: str, hashed: str) -> bool:
-    return bcrypt.checkpw(pw.encode(), hashed.encode())
+def verify_pw(pw: str, h: str) -> bool:
+    return bcrypt.checkpw(pw.encode(), h.encode())
 
 def make_token(user_id: str) -> str:
     return jwt.encode(
@@ -122,6 +117,63 @@ async def current_user(authorization: Optional[str] = Header(None)):
 def public_user(u: dict) -> dict:
     return {k: u[k] for k in ("id", "email", "name", "credits", "created_at") if k in u}
 
+# ---------- Generation engines ----------
+async def _generate_gemini(model: dict, prompt: str, aspect_ratio: str) -> tuple[str, str]:
+    """Returns (filename, mime_ext)."""
+    session_id = f"gen-{uuid.uuid4()}"
+    chat = LlmChat(
+        api_key=EMERGENT_LLM_KEY, session_id=session_id,
+        system_message="You are an expert AI image generator. Create stunning, detailed visuals.",
+    )
+    chat.with_model("gemini", model["engine"]).with_params(modalities=["image", "text"])
+    full_prompt = f"{prompt}. Aspect ratio: {aspect_ratio}. High quality, detailed."
+    _text, images = await chat.send_message_multimodal_response(UserMessage(text=full_prompt))
+    if not images:
+        raise RuntimeError("No image returned from model.")
+    img = images[0]
+    ext = "jpg" if "jpeg" in img.get("mime_type", "") else "png"
+    fname = f"{uuid.uuid4()}.{ext}"
+    (GENERATED_DIR / fname).write_bytes(base64.b64decode(img["data"]))
+    return fname, ext
+
+
+async def _generate_comfy(model: dict, prompt: str, aspect_ratio: str) -> tuple[str, str]:
+    """Submit workflow to Comfy Cloud, poll, download output."""
+    workflow = build_comfy_workflow(model, prompt, aspect_ratio)
+    # Partner nodes (FLUX, Kling, Veo, etc) require auth_token_comfy_org
+    prompt_id = await comfy.submit_workflow(workflow, needs_auth=True)
+
+    # Poll status (videos can take a few minutes)
+    deadline = asyncio.get_event_loop().time() + 600  # 10 min hard cap
+    poll_interval = 3.0
+    while asyncio.get_event_loop().time() < deadline:
+        try:
+            status = await comfy.job_status(prompt_id)
+        except ComfyCloudError as e:
+            logger.warning("status poll failed: %s", e)
+            status = {}
+        s = (status.get("status") or status.get("state") or "").lower()
+        if s in ("completed", "success", "succeeded", "done"):
+            break
+        if s in ("failed", "error", "cancelled", "canceled"):
+            raise RuntimeError(f"Comfy job {prompt_id} failed: {status}")
+        await asyncio.sleep(poll_interval)
+        poll_interval = min(poll_interval * 1.2, 8.0)
+    else:
+        raise RuntimeError("Generation timed out after 10 minutes.")
+
+    details = await comfy.job_details(prompt_id)
+    files = collect_output_files(details)
+    if not files:
+        raise RuntimeError("Comfy job finished but produced no output files.")
+    item = files[0]
+    src_url = comfy.file_url(item)
+    ext = Path(item.get("filename", "out.bin")).suffix.lstrip(".") or ("mp4" if model["type"] == "video" else "png")
+    fname = f"{uuid.uuid4()}.{ext}"
+    await comfy.download_file(src_url, GENERATED_DIR / fname)
+    return fname, ext
+
+
 # ---------- Routes ----------
 @api.get("/")
 async def root():
@@ -129,7 +181,7 @@ async def root():
 
 @api.get("/models")
 async def get_models():
-    return {"models": MODELS_CATALOG}
+    return {"models": public_catalog()}
 
 @api.get("/packages")
 async def get_packages():
@@ -138,16 +190,14 @@ async def get_packages():
 # --- Auth ---
 @api.post("/auth/register")
 async def register(req: RegisterReq):
-    existing = await db.users.find_one({"email": req.email.lower()})
-    if existing:
+    if await db.users.find_one({"email": req.email.lower()}):
         raise HTTPException(400, "Email already registered")
     user_id = str(uuid.uuid4())
     doc = {
-        "id": user_id,
-        "email": req.email.lower(),
+        "id": user_id, "email": req.email.lower(),
         "name": req.name or req.email.split("@")[0],
         "password": hash_pw(req.password),
-        "credits": 20,  # welcome credits
+        "credits": 20,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.users.insert_one(doc)
@@ -166,12 +216,12 @@ async def me(user=Depends(current_user)):
 
 # --- Generation ---
 @api.post("/generate")
-async def generate(req: GenerateReq, request: Request, user=Depends(current_user)):
-    model = next((m for m in MODELS_CATALOG if m["id"] == req.model_id), None)
+async def generate(req: GenerateReq, user=Depends(current_user)):
+    model = find_model(req.model_id)
     if not model:
         raise HTTPException(400, "Unknown model")
     if not model["available"]:
-        raise HTTPException(400, f"{model['name']} is launching soon. Try Nano Banana for instant results.")
+        raise HTTPException(400, f"{model['name']} is not available right now.")
     cost = model["credits"]
     if user["credits"] < cost:
         raise HTTPException(402, "Insufficient credits. Upgrade your plan.")
@@ -186,55 +236,31 @@ async def generate(req: GenerateReq, request: Request, user=Depends(current_user
         raise HTTPException(402, "Insufficient credits")
 
     try:
-        session_id = f"gen-{uuid.uuid4()}"
-        chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=session_id,
-                       system_message="You are an expert AI image generator. Create stunning, detailed visuals.")
-        chat.with_model("gemini", model["engine"]).with_params(modalities=["image", "text"])
-        full_prompt = f"{req.prompt}. Aspect ratio: {req.aspect_ratio}. High quality, detailed."
-        text, images = await chat.send_message_multimodal_response(UserMessage(text=full_prompt))
+        if model["engine_type"] == "gemini":
+            fname, _ext = await _generate_gemini(model, req.prompt, req.aspect_ratio)
+        elif model["engine_type"] == "comfy":
+            fname, _ext = await _generate_comfy(model, req.prompt, req.aspect_ratio)
+        else:
+            raise RuntimeError(f"Unknown engine_type: {model['engine_type']}")
 
-        if not images:
-            # refund
-            await db.users.update_one({"id": user["id"]}, {"$inc": {"credits": cost}})
-            raise HTTPException(500, "No image generated. Try a different prompt.")
-
-        img = images[0]
-        ext = "png"
-        if "jpeg" in img.get("mime_type", ""):
-            ext = "jpg"
+        media_url = f"/api/media/{fname}"
         gen_id = str(uuid.uuid4())
-        filename = f"{gen_id}.{ext}"
-        filepath = GENERATED_DIR / filename
-        with open(filepath, "wb") as f:
-            f.write(base64.b64decode(img["data"]))
-
-        # Use a relative URL so the public REACT_APP_BACKEND_URL prefix on the
-        # frontend resolves to the correct HTTPS origin (ingress strips/forwards).
-        media_url = f"/api/media/{filename}"
-
         gen_doc = {
-            "id": gen_id,
-            "user_id": user["id"],
-            "prompt": req.prompt,
-            "model_id": req.model_id,
-            "model_name": model["name"],
-            "type": model["type"],
-            "media_url": media_url,
-            "filename": filename,
-            "aspect_ratio": req.aspect_ratio,
-            "credits_used": cost,
+            "id": gen_id, "user_id": user["id"], "prompt": req.prompt,
+            "model_id": req.model_id, "model_name": model["name"],
+            "type": model["type"], "media_url": media_url, "filename": fname,
+            "aspect_ratio": req.aspect_ratio, "credits_used": cost,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         await db.generations.insert_one(gen_doc)
         gen_doc.pop("_id", None)
-        new_credits = user["credits"] - cost
-        return {"generation": gen_doc, "credits_remaining": new_credits}
+        return {"generation": gen_doc, "credits_remaining": user["credits"] - cost}
     except HTTPException:
         raise
     except Exception as e:
         logger.exception("Generation failed")
         await db.users.update_one({"id": user["id"]}, {"$inc": {"credits": cost}})
-        raise HTTPException(500, f"Generation failed: {str(e)[:200]}")
+        raise HTTPException(500, f"Generation failed: {str(e)[:300]}")
 
 @api.get("/generations")
 async def list_generations(user=Depends(current_user)):
@@ -255,31 +281,17 @@ async def create_checkout(req: CheckoutReq, http_request: Request, user=Depends(
     webhook_url = f"{host_url}/api/webhook/stripe"
     stripe = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
 
-    metadata = {
-        "user_id": user["id"],
-        "package_id": req.package_id,
-        "credits": str(pkg["credits"]),
-    }
+    metadata = {"user_id": user["id"], "package_id": req.package_id, "credits": str(pkg["credits"])}
     creq = CheckoutSessionRequest(
-        amount=float(pkg["amount"]),
-        currency=pkg["currency"],
-        success_url=success_url,
-        cancel_url=cancel_url,
-        metadata=metadata,
+        amount=float(pkg["amount"]), currency=pkg["currency"],
+        success_url=success_url, cancel_url=cancel_url, metadata=metadata,
     )
     session = await stripe.create_checkout_session(creq)
-
     await db.payment_transactions.insert_one({
-        "session_id": session.session_id,
-        "user_id": user["id"],
-        "package_id": req.package_id,
-        "amount": pkg["amount"],
-        "currency": pkg["currency"],
-        "credits": pkg["credits"],
-        "payment_status": "initiated",
-        "status": "pending",
-        "credited": False,
-        "metadata": metadata,
+        "session_id": session.session_id, "user_id": user["id"],
+        "package_id": req.package_id, "amount": pkg["amount"], "currency": pkg["currency"],
+        "credits": pkg["credits"], "payment_status": "initiated", "status": "pending",
+        "credited": False, "metadata": metadata,
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
     return {"url": session.url, "session_id": session.session_id}
@@ -297,17 +309,17 @@ async def checkout_status(session_id: str, http_request: Request, user=Depends(c
     status = await stripe.get_checkout_status(session_id)
 
     update = {"payment_status": status.payment_status, "status": status.status}
+    credits_added = 0
     if status.payment_status == "paid" and not txn.get("credited"):
         update["credited"] = True
-        await db.users.update_one({"id": txn["user_id"]}, {"$inc": {"credits": txn["credits"]}})
+        credits_added = txn["credits"]
+        await db.users.update_one({"id": txn["user_id"]}, {"$inc": {"credits": credits_added}})
     await db.payment_transactions.update_one({"session_id": session_id}, {"$set": update})
 
     return {
-        "payment_status": status.payment_status,
-        "status": status.status,
-        "amount_total": status.amount_total,
-        "currency": status.currency,
-        "credits_added": txn["credits"] if (status.payment_status == "paid" and not txn.get("credited")) else 0,
+        "payment_status": status.payment_status, "status": status.status,
+        "amount_total": status.amount_total, "currency": status.currency,
+        "credits_added": credits_added,
     }
 
 @api.post("/webhook/stripe")
@@ -330,7 +342,6 @@ async def stripe_webhook(request: Request):
             await db.users.update_one({"id": txn["user_id"]}, {"$inc": {"credits": txn["credits"]}})
     return {"received": True}
 
-# --- Stats (community) ---
 @api.get("/explore")
 async def explore():
     docs = await db.generations.find({}, {"_id": 0, "user_id": 0, "filename": 0}).sort("created_at", -1).limit(24).to_list(24)
@@ -338,11 +349,9 @@ async def explore():
 
 app.include_router(api)
 app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
+    CORSMiddleware, allow_credentials=True,
     allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"], allow_headers=["*"],
 )
 
 @app.on_event("shutdown")
