@@ -5,12 +5,23 @@ import PromptBox from "@/components/PromptBox";
 import { Sparkles, Loader2 } from "lucide-react";
 
 /** Simplified generator page (Image or Video) matching ArtCraft's canvas + floating prompt UX. */
+const STORAGE_KEY = "aimaraya_last_result";
+
 export default function CreatePage({ mode = "image" }) {
   const [sp] = useSearchParams();
   const preModel = sp.get("model") || undefined;
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) try { return JSON.parse(saved); } catch { return null; }
+    return null;
+  });
   const [recent, setRecent] = useState([]);
   const canvasRef = useRef(null);
+
+  useEffect(() => {
+    if (result) localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
+    if (!result) localStorage.removeItem(STORAGE_KEY);
+  }, [result]);
 
   useEffect(() => {
     api.get("/generations").then(r => setRecent((r.data.generations || []).filter(g => g.type === mode).slice(0, 6)));
@@ -20,6 +31,7 @@ export default function CreatePage({ mode = "image" }) {
 
   const handleResult = (gen) => {
     setResult(gen);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(gen));
     setTimeout(() => canvasRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
   };
 
