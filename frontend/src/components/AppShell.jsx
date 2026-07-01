@@ -21,9 +21,9 @@ const ASSET_NAV = [
   { to: "/app/library/folders", label: "Folders", icon: Folder },
 ];
 const RESOURCE_NAV = [
-  { href: "https://getartcraft.ai/tutorials", label: "Tutorials", icon: GraduationCap },
-  { href: "https://getartcraft.ai/news", label: "News", icon: Newspaper },
-  { href: "https://getartcraft.ai/faq", label: "FAQ", icon: HelpCircle },
+  { href: "#", label: "Tutorials", icon: GraduationCap },
+  { href: "#", label: "News", icon: Newspaper },
+  { href: "#", label: "FAQ", icon: HelpCircle },
 ];
 
 function SideItem({ to, href, label, icon: Icon, beta, active }) {
