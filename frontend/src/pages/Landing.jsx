@@ -90,22 +90,6 @@ const SHOWCASE_COL_3 = [
   { img: `${_OA}image_joPwIneD_512x512_1774499266254.webp`, label: "Grok Imagine",              tag: "IMAGE" },
 ];
 
-// ------------------------- Use-case grid (Vibe Direct-style) -----------
-const USE_CASES = [
-  { title: "Short Film",      tag: "Cinematic",  icon: Clapperboard, prompt: "A cinematic short film about a wanderer in a desert",       img: "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=600&q=80&auto=format&fit=crop" },
-  { title: "Music Video",     tag: "Motion",     icon: Play,          prompt: "A neon-lit music video, dancer in slow motion, rain",       img: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=600&q=80&auto=format&fit=crop" },
-  { title: "UGC Ads",         tag: "Social",     icon: ShoppingBag,   prompt: "A creator unboxing a beauty product, natural light, iPhone", img: "https://images.unsplash.com/photo-1541643600914-78b084683601?w=600&q=80&auto=format&fit=crop" },
-  { title: "Brand Film",      tag: "Corporate",  icon: Star,          prompt: "A brand story: sleek office, close-ups on hands and screens", img: "https://images.unsplash.com/photo-1493666438817-866a91353ca9?w=600&q=80&auto=format&fit=crop" },
-  { title: "Product Ads",     tag: "E-commerce", icon: ShoppingBag,   prompt: "Slow-motion product hero shot, dramatic studio lighting",    img: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&q=80&auto=format&fit=crop" },
-  { title: "Film Trailer",    tag: "Cinematic",  icon: Video,          prompt: "Epic film trailer sequence, dark hero, quick cuts",          img: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&q=80&auto=format&fit=crop" },
-  { title: "Character",       tag: "Design",     icon: User,           prompt: "A cyberpunk detective, portrait, atmospheric lighting",       img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&q=80&auto=format&fit=crop" },
-  { title: "Anime",           tag: "Style",      icon: Sparkles,       prompt: "Anime-style hero character, dynamic pose, studio ghibli",     img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&q=80&auto=format&fit=crop" },
-  { title: "World Building",  tag: "Concept",    icon: Wand2,          prompt: "Sprawling fantasy city on floating islands, magic hour",     img: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&q=80&auto=format&fit=crop" },
-  { title: "Gaming Concept",  tag: "Design",     icon: Zap,            prompt: "AAA game concept art, epic scale, painterly finish",         img: "https://images.unsplash.com/photo-1533450718592-29d45635f0a9?w=600&q=80&auto=format&fit=crop" },
-  { title: "Real Estate",     tag: "Walkthrough",icon: ImageIcon,     prompt: "Luxury villa cinematic walkthrough, golden hour, wide lens", img: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=600&q=80&auto=format&fit=crop" },
-  { title: "Food & Chef",     tag: "Story",      icon: Sparkles,       prompt: "Michelin chef finishing a plate, close-up, steam swirls",    img: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&q=80&auto=format&fit=crop" },
-];
-
 // Latest / spotlight models (real hosted assets)
 const LATEST_MODELS = [
   { name: "Seedance 2.0",      badge: "NEW",  desc: "Cinematic video, 4-credit clips", img: "https://cdn.openart.ai/assets/internal/uploads/image_CsJ_IqM2_600x800_1781682208175.webp" },
@@ -305,51 +289,6 @@ export default function Landing() {
           <div className="text-xs text-[#a89dc9] mt-3 font-mono">
             No card required · 100 free credits on sign-up
           </div>
-        </div>
-      </section>
-
-      {/* ============================ USE-CASE GRID (Vibe Direct) ============================ */}
-      <section className="max-w-7xl mx-auto px-6 lg:px-10 py-24" data-testid="usecase-grid">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-10 gap-4">
-          <div>
-            <div className="pill mb-4 uppercase font-mono inline-flex">// What can you make</div>
-            <h2 className="font-display text-4xl md:text-5xl tracking-tighter leading-[1.05]">
-              Pick a vibe. <span className="gradient-text">Ship in minutes.</span>
-            </h2>
-            <p className="text-[#a89dc9] mt-3 max-w-xl text-sm md:text-base">
-              12 pre-tuned prompt starters for every content need. Tap one — the studio opens with the prompt loaded.
-            </p>
-          </div>
-          <Link to="/app/create-image" className="btn-ghost text-sm inline-flex items-center gap-2 self-start">
-            Browse all templates <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {USE_CASES.map((u) => (
-            <Link
-              key={u.title}
-              to={`/app/create-image?prompt=${encodeURIComponent(u.prompt)}`}
-              data-testid={`usecase-${u.title.toLowerCase().replace(/\s+/g, "-")}`}
-              className="group relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/[0.06] hover:border-[#a855f7]/60 transition-all"
-            >
-              <img src={u.img} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
-              <div className="absolute top-3 left-3">
-                <span className="pill !py-0.5 !px-2 text-[9px] font-mono bg-black/60 backdrop-blur-md border-white/20 text-white/80">{u.tag}</span>
-              </div>
-              <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 backdrop-blur flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <ArrowRight className="w-3.5 h-3.5 text-white" />
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <u.icon className="w-3.5 h-3.5 text-[#c084fc]" strokeWidth={2} />
-                  <div className="font-display text-lg tracking-tight text-white">{u.title}</div>
-                </div>
-                <div className="text-[10px] text-white/60 line-clamp-2 leading-relaxed font-mono">{u.prompt}</div>
-              </div>
-            </Link>
-          ))}
         </div>
       </section>
 
