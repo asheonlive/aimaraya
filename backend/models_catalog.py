@@ -62,14 +62,6 @@ def build_comfy_workflow(model: dict, prompt: str, aspect_ratio: str = "16:9") -
 
 # ============================ CATALOG ========================================
 MODELS: list[dict[str, Any]] = [
-    # --------------------------- IMAGE / Gemini ----------------------------
-    {"id": "nano-banana", "name": "Nano Banana", "type": "image", "category": "Artistic",
-     "credits": 1, "available": True, "tagline": "Fast, vivid Gemini image",
-     "engine_type": "gemini", "engine": "gemini-3.1-flash-image-preview"},
-    {"id": "nano-banana-pro", "name": "Nano Banana Pro", "type": "image", "category": "Hyper-Realistic",
-     "credits": 2, "available": True, "tagline": "Premium Gemini image",
-     "engine_type": "gemini", "engine": "gemini-3-pro-image-preview"},
-
     # --------------------------- IMAGE / Comfy ----------------------------
     {"id": "flux-1.1-ultra", "name": "FLUX 1.1 Ultra", "type": "image",
      "category": "Cinematic", "credits": 4, "available": True,
