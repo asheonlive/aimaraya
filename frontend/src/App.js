@@ -12,14 +12,14 @@ import Pricing from "@/pages/Pricing";
 import Explore from "@/pages/Explore";
 import Templates from "@/pages/Templates";
 import Dashboard from "@/pages/Dashboard";
-import Studio from "@/pages/Studio";
+import CreatePage from "@/pages/CreatePage";
 import VideoStudio from "@/pages/VideoStudio";
 import Assets from "@/pages/Assets";
 import Models from "@/pages/Models";
 import Settings from "@/pages/Settings";
+import ComingSoon from "@/pages/ComingSoon";
 import "@/App.css";
 
-/** Public marketing shell (top nav + footer) */
 function PublicShell({ children, hideFooter }) {
   return (
     <div className="min-h-screen flex flex-col bg-[#07050f] text-[#f5f3ff] grain">
@@ -46,12 +46,18 @@ export default function App() {
           <Route path="/auth" element={<PublicShell><Auth /></PublicShell>} />
           <Route path="/success" element={<PublicShell><Success /></PublicShell>} />
 
-          {/* App (sidebar shell) */}
+          {/* App */}
           <Route path="/app" element={<AppShell />}>
             <Route index element={<Dashboard />} />
-            <Route path="create" element={<Studio />} />
-            <Route path="image-studio" element={<Studio />} />
-            <Route path="video-studio" element={<VideoStudio />} />
+            <Route path="create-image" element={<CreatePage mode="image" />} />
+            <Route path="create-video" element={<CreatePage mode="video" />} />
+            <Route path="edit-image" element={<ComingSoon title="Image Editor" tagline="Inpainting, outpainting and object-swap — coming soon." />} />
+            <Route path="edit-3d" element={<ComingSoon title="3D Editor" tagline="Turn images into 3D scenes." />} />
+            <Route path="video-editor" element={<VideoStudio />} />
+            <Route path="background-change" element={<ComingSoon title="Background Change" tagline="Swap or remove backgrounds instantly." />} />
+            <Route path="moodboard" element={<ComingSoon title="Moodboard" tagline="Organize references into projects." />} />
+            <Route path="library" element={<Assets />} />
+            <Route path="library/folders" element={<ComingSoon title="Folders" tagline="Group your generations into projects." />} />
             <Route path="templates" element={<Templates />} />
             <Route path="generations" element={<Assets />} />
             <Route path="assets" element={<Assets />} />
