@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api, resolveMedia } from "@/lib/api";
 import PromptBox from "@/components/PromptBox";
 import { Sparkles, Loader2 } from "lucide-react";
 
 /** Simplified generator page (Image or Video) matching ArtCraft's canvas + floating prompt UX. */
 export default function CreatePage({ mode = "image" }) {
+  const [sp] = useSearchParams();
+  const preModel = sp.get("model") || undefined;
   const [result, setResult] = useState(null);
   const [recent, setRecent] = useState([]);
 
@@ -59,7 +62,7 @@ export default function CreatePage({ mode = "image" }) {
       )}
 
       {/* Floating prompt */}
-      <PromptBox mode={mode} onResult={setResult} />
+      <PromptBox mode={mode} onResult={setResult} defaultModel={preModel} />
     </div>
   );
 }

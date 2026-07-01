@@ -41,7 +41,7 @@ export default function Models() {
             <div className="flex items-center justify-between pt-4 border-t border-[#2a2340]">
               <span className="font-mono text-sm">{m.credits} <span className="text-[#6b6188]">credits</span></span>
               {m.available
-                ? <Link to={`/app/create?model=${m.id}`} className="text-xs uppercase tracking-[0.2em] text-[#c084fc] inline-flex items-center gap-1 hover:gap-2 transition-all">Use <ArrowUpRight className="w-3 h-3" /></Link>
+                ? <Link to={`/app/create-${m.type === "video" ? "video" : "image"}?model=${m.id}`} className="text-xs uppercase tracking-[0.2em] text-[#c084fc] inline-flex items-center gap-1 hover:gap-2 transition-all">Use <ArrowUpRight className="w-3 h-3" /></Link>
                 : <span className="text-xs uppercase tracking-[0.2em] text-[#6b6188]">Waitlist</span>}
             </div>
           </div>
