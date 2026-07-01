@@ -634,6 +634,14 @@ async def list_storyboards(user=Depends(current_user)):
     return {"storyboards": docs}
 
 
+@api.get("/storyboards/{story_id}")
+async def get_storyboard(story_id: str, user=Depends(current_user)):
+    doc = await db.storyboards.find_one({"id": story_id, "user_id": user["id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Storyboard not found")
+    return {"storyboard": doc}
+
+
 @api.post("/storyboard/{story_id}/animate")
 async def animate_storyboard(story_id: str, req: AnimateReq, user=Depends(current_user)):
     story = await db.storyboards.find_one({"id": story_id, "user_id": user["id"]})
@@ -656,19 +664,23 @@ async def animate_storyboard(story_id: str, req: AnimateReq, user=Depends(curren
     if not res:
         raise HTTPException(402, "Insufficient credits")
 
-    refund = 0
-    for p in panels:
+    async def _animate_one(p: dict) -> tuple[dict, int]:
         if not p.get("media_url"):
-            continue
+            return p, 0
         try:
             fname, _ = await _generate_comfy(v_model, p["prompt"], "16:9", None)
             p["video_url"] = f"/api/media/{fname}"
             p["video_status"] = "ready"
+            return p, 0
         except Exception as e:
             logger.warning("Animate panel %d failed: %s", p.get("index"), e)
             p["video_status"] = "failed"
             p["error"] = str(e)[:200]
-            refund += v_model["credits"]
+            return p, v_model["credits"]
+
+    results = await asyncio.gather(*[_animate_one(p) for p in panels])
+    panels = [r[0] for r in results]
+    refund = sum(r[1] for r in results)
 
     if refund:
         await db.users.update_one({"id": user["id"]}, {"$inc": {"credits": refund}})

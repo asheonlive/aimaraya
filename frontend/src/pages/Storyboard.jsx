@@ -21,9 +21,30 @@ export default function Storyboard() {
   const [panels, setPanels] = useState(6);
   const [style, setStyle] = useState("cinematic");
   const [videoModel, setVideoModel] = useState("seedance-fast");
+  const [autoAnimate, setAutoAnimate] = useState(true);
   const [busy, setBusy] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [story, setStory] = useState(null);
+
+  const doAnimate = async (storyId) => {
+    setAnimating(true);
+    try {
+      const r = await api.post(`/storyboard/${storyId}/animate`, { video_model: videoModel });
+      setStory(r.data.storyboard);
+      setUser({ ...user, credits: r.data.credits_remaining });
+      toast.success("Videos ready — hover a panel to preview");
+    } catch (e) {
+      // On timeout, poll the storyboard directly
+      const msg = e.response?.data?.detail;
+      try {
+        const s = await api.get(`/storyboards/${storyId}`);
+        setStory(s.data.storyboard);
+        const done = (s.data.storyboard.panels || []).filter(p => p.video_url).length;
+        if (done > 0) toast.success(`${done} videos ready`);
+        else toast.error(msg || "Animate failed");
+      } catch { toast.error(msg || "Animate failed"); }
+    } finally { setAnimating(false); }
+  };
 
   const generate = async () => {
     if (!concept.trim()) return toast.error("Describe your concept first");
@@ -32,23 +53,21 @@ export default function Storyboard() {
       const r = await api.post("/storyboard", { concept, panels, style });
       setStory(r.data.storyboard);
       setUser({ ...user, credits: r.data.credits_remaining });
-      toast.success("Storyboard ready");
+      const ok = (r.data.storyboard.panels || []).filter(p => p.media_url).length;
+      toast.success(`Storyboard ready · ${ok} panels`);
+      setBusy(false);
+      if (autoAnimate && ok > 0) {
+        await doAnimate(r.data.storyboard.id);
+      }
     } catch (e) {
       toast.error(e.response?.data?.detail || "Storyboard failed");
-    } finally { setBusy(false); }
+      setBusy(false);
+    }
   };
 
   const animate = async () => {
     if (!story) return;
-    setAnimating(true);
-    try {
-      const r = await api.post(`/storyboard/${story.id}/animate`, { video_model: videoModel });
-      setStory(r.data.storyboard);
-      setUser({ ...user, credits: r.data.credits_remaining });
-      toast.success("Videos generated — check each panel");
-    } catch (e) {
-      toast.error(e.response?.data?.detail || "Animate failed");
-    } finally { setAnimating(false); }
+    await doAnimate(story.id);
   };
 
   const estImage = 5 * panels + 2;
@@ -105,9 +124,17 @@ export default function Storyboard() {
           </div>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="text-xs text-[#a89dc9]">Est. cost: <span className="text-[#c084fc] font-mono">{estImage} credits</span> for {panels} panels · animation adds {6 * panels} credits</div>
-          <button data-testid="story-generate" onClick={generate} disabled={busy} className="btn-primary text-sm inline-flex items-center gap-2">
-            {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</> : <><Wand2 className="w-4 h-4" /> Generate Storyboard</>}
+          <div className="flex flex-col gap-2">
+            <div className="text-xs text-[#a89dc9]">Est. cost: <span className="text-[#c084fc] font-mono">{estImage} credits</span> for {panels} panels{autoAnimate && <span> + <span className="text-emerald-400 font-mono">{4 * panels} credits</span> animation</span>}</div>
+            <label className="flex items-center gap-2 text-xs text-[#a89dc9] cursor-pointer select-none" data-testid="story-autoanimate">
+              <input type="checkbox" checked={autoAnimate} onChange={(e) => setAutoAnimate(e.target.checked)} className="w-4 h-4 rounded border-[#2a2340] bg-[#0d0919] accent-[#a855f7]" />
+              <span>Auto-animate every panel into video after generation</span>
+            </label>
+          </div>
+          <button data-testid="story-generate" onClick={generate} disabled={busy || animating} className="btn-primary text-sm inline-flex items-center gap-2">
+            {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Drawing panels…</> :
+             animating ? <><Loader2 className="w-4 h-4 animate-spin" /> Animating…</> :
+             <><Wand2 className="w-4 h-4" /> {autoAnimate ? "Generate Full Video Storyboard" : "Generate Storyboard"}</>}
           </button>
         </div>
       </div>
@@ -117,7 +144,15 @@ export default function Storyboard() {
         <div className="card-purple py-16 text-center">
           <Loader2 className="w-10 h-10 text-[#a855f7] animate-spin mx-auto mb-3" />
           <div className="text-white">Agent is drawing your storyboard…</div>
-          <div className="text-xs text-[#a89dc9] mt-1 font-mono">This can take 60-120s for {panels} panels.</div>
+          <div className="text-xs text-[#a89dc9] mt-1 font-mono">Panels generate in parallel · ~30-60s{autoAnimate && " (video step runs after)"}</div>
+        </div>
+      )}
+
+      {animating && !busy && !story?.panels?.some(p => p.video_url) && (
+        <div className="card-purple py-12 text-center mb-6" data-testid="story-animating-banner">
+          <Loader2 className="w-8 h-8 text-emerald-400 animate-spin mx-auto mb-3" />
+          <div className="text-white">Animating {validPanels} panels into video…</div>
+          <div className="text-xs text-[#a89dc9] mt-1 font-mono">Using {VIDEO_MODELS.find(v => v.id === videoModel)?.label} · running in parallel</div>
         </div>
       )}
 
