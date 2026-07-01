@@ -61,6 +61,7 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="create-image" element={<CreatePage mode="image" />} />
             <Route path="create-video" element={<CreatePage mode="video" />} />
+            <Route path="storyboard" element={<Storyboard />} />
             <Route path="edit-image" element={<ComingSoon title="Image Editor" tagline="Inpainting, outpainting and object-swap — coming soon." />} />
             <Route path="edit-3d" element={<ComingSoon title="3D Editor" tagline="Turn images into 3D scenes." />} />
             <Route path="video-editor" element={<VideoStudio />} />
