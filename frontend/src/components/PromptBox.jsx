@@ -20,17 +20,15 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
   const [quality, setQuality] = useState("High");
   const [duration, setDuration] = useState("5s");
   const [count, setCount] = useState(1);
-  const [loading, setLoading] = useState(false);
   const [refImage, setRefImage] = useState(null);
   const [startFrame, setStartFrame] = useState(null);
   const [endFrame, setEndFrame] = useState(null);
   const [cameraCtrl, setCameraCtrl] = useState("");
   const [character, setCharacter] = useState(null);
   const [charsOpen, setCharsOpen] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
   const [motionVideo, setMotionVideo] = useState(null);
   const [motionImage, setMotionImage] = useState(null);
-  const timerRef = useRef(null);
+  const [jobs, setJobs] = useState([]);
   const imgFileRef = useRef(null);
   const startFileRef = useRef(null);
   const endFileRef = useRef(null);
@@ -85,23 +83,22 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
     catch (err) { toast.error(err.response?.data?.detail || "Upload failed"); }
   };
 
+  const jobsRef = useRef(jobs);
+  jobsRef.current = jobs;
   useEffect(() => {
-    if (loading) {
-      setElapsed(0);
-      const start = Date.now();
-      timerRef.current = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 200);
-    } else {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    return () => clearInterval(timerRef.current);
-  }, [loading]);
+    if (!jobs.length) return;
+    const id = setInterval(() => {
+      setJobs(prev => prev.map(j => j.status === "running" ? { ...j, elapsed: (j.elapsed || 0) + 0.25 } : j));
+    }, 250);
+    return () => clearInterval(id);
+  }, [!!jobs.length]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return toast.error("Enter a prompt first");
     if (!selected) return toast.error("Pick a model");
-    setElapsed(0);
-    setLoading(true); onGenerating?.(true);
+    const token = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    setJobs(prev => [...prev, { id: token, model: selected.name, prompt: prompt.slice(0, 80), status: "running", elapsed: 0, media_url: null }]);
+    onGenerating?.(true);
     try {
       const body = {
         prompt,
@@ -120,11 +117,15 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
       };
       const r = await api.post("/generate", body);
       setUser({ ...user, credits: r.data.daily_videos_remaining ?? r.data.credits_remaining, daily_videos_remaining: r.data.daily_videos_remaining ?? r.data.credits_remaining, daily_video_limit: r.data.daily_video_limit ?? user.daily_video_limit });
+      setJobs(prev => prev.map(j => j.id === token ? { ...j, status: "completed", media_url: r.data.generation?.media_url } : j));
       onResult?.(r.data.generation);
       toast.success(`Generated with ${selected.name}`);
+      setTimeout(() => setJobs(prev => prev.filter(j => j.id !== token)), 8000);
     } catch (e) {
+      setJobs(prev => prev.map(j => j.id === token ? { ...j, status: "error", error: e.response?.data?.detail || "Generation failed" } : j));
       toast.error(e.response?.data?.detail || "Generation failed");
-    } finally { setLoading(false); onGenerating?.(false); }
+      setTimeout(() => setJobs(prev => prev.filter(j => j.id !== token)), 4000);
+    } finally { onGenerating?.(false); }
   };
 
   return (
@@ -269,11 +270,10 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
               </Pill>
               <button
                 onClick={handleGenerate}
-                disabled={loading}
                 data-testid="promptbox-generate"
-                className="group flex h-[34px] flex-1 sm:flex-none items-center justify-center gap-2 rounded-lg gradient-purple hover:opacity-90 px-4 text-sm text-white disabled:opacity-50"
+                className="group flex h-[34px] flex-1 sm:flex-none items-center justify-center gap-2 rounded-lg gradient-purple hover:opacity-90 px-4 text-sm text-white"
               >
-                <span className="truncate">{loading ? "Generating..." : "Generate"}</span>
+                <span className="truncate">Generate</span>
                 {mode === "video" && <span className="text-[12px] font-semibold opacity-80">{videosRemaining}/{user?.daily_video_limit ?? 12} today</span>}
               </button>
             </div>
@@ -286,26 +286,39 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
         </div>
       </div>
     </div>
-    <CharactersModal open={charsOpen} onClose={() => setCharsOpen(false)} onPick={setCharacter} />
-    {loading && modelsLoaded && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-        <div className="relative flex flex-col items-center gap-4 p-10">
-          <div className="relative">
-            <div className="w-20 h-20 rounded-full gradient-purple animate-ping opacity-40 absolute inset-0" />
-            <div className="w-20 h-20 rounded-full border-2 border-[#a855f7]/30 animate-spin absolute inset-0 border-t-[#a855f7]" />
-            <div className="w-20 h-20 rounded-full bg-[#0d0919] flex items-center justify-center relative z-10">
-              <Sparkles className="w-8 h-8 text-[#c084fc] animate-pulse" />
+    {jobs.length > 0 && (
+      <div className="fixed bottom-24 left-0 right-0 z-40 mx-auto max-w-5xl px-2 sm:px-4 lg:left-56">
+        <div className="flex flex-col gap-2">
+          {jobs.map(j => (
+            <div key={j.id} className={`glass rounded-xl px-4 py-3 flex items-center gap-3 ${j.status === "completed" ? "border-l-4 border-l-emerald-500" : j.status === "error" ? "border-l-4 border-l-red-500" : "border-l-4 border-l-[#a855f7]"}`}>
+              {j.status === "running" ? (
+                <div className="relative w-8 h-8 shrink-0">
+                  <div className="w-8 h-8 rounded-full border-2 border-[#a855f7]/30 animate-spin border-t-[#a855f7]" />
+                </div>
+              ) : j.status === "completed" ? (
+                <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                </div>
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm text-white font-medium truncate">{j.model}</div>
+                <div className="text-xs text-white/60 truncate">{j.prompt}</div>
+              </div>
+              <div className="text-xs text-white/50 shrink-0">
+                {j.status === "running" && `${Math.floor(j.elapsed)}s`}
+                {j.status === "completed" && "Done!"}
+                {j.status === "error" && "Failed"}
+              </div>
             </div>
-          </div>
-          <div className="text-center">
-            <p className="text-white font-medium text-lg">Generating with {selected?.name || mode === "video" ? "AI MARAYA" : "AI MARAYA"}</p>
-            <p className="text-[#a89dc9] text-sm mt-1">
-              {elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`}
-            </p>
-          </div>
+          ))}
         </div>
       </div>
     )}
+    <CharactersModal open={charsOpen} onClose={() => setCharsOpen(false)} onPick={setCharacter} />
     </>
   );
 }
