@@ -46,6 +46,7 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
   const videosRemaining = user?.daily_videos_remaining ?? user?.credits ?? 0;
   const modelSupportsImageRef = selected && MODEL_SUPPORTS_IMAGE_REF.includes(selected.id);
   const caps = selected?.caps || {};
+  const hasImageRef = !!caps.image_ref;
   const hasStartFrame = !!caps.start_frame;
   const hasEndFrame = !!caps.end_frame;
   const hasCameraCtrl = !!caps.camera_control;
@@ -114,7 +115,7 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
                 onClear={() => setEndFrame(null)} />
               </>
             )}
-            {!hasStartFrame && !hasEndFrame && (
+            {hasImageRef && !hasStartFrame && !hasEndFrame && (
               <>
                 <RefSlot icon={ImageIcon} label="Image Ref" limit="0/9" hint="Upload images"
                   preview={refImage?.preview} onPick={() => imgFileRef.current?.click()}
