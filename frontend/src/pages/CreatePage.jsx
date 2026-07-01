@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api, resolveMedia } from "@/lib/api";
 import PromptBox from "@/components/PromptBox";
@@ -10,12 +10,18 @@ export default function CreatePage({ mode = "image" }) {
   const preModel = sp.get("model") || undefined;
   const [result, setResult] = useState(null);
   const [recent, setRecent] = useState([]);
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     api.get("/generations").then(r => setRecent((r.data.generations || []).filter(g => g.type === mode).slice(0, 6)));
   }, [mode]);
 
   const isVideo = mode === "video";
+
+  const handleResult = (gen) => {
+    setResult(gen);
+    setTimeout(() => canvasRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-6 lg:px-10 py-8 pb-56 min-h-[calc(100vh-3.5rem)]">
@@ -25,7 +31,7 @@ export default function CreatePage({ mode = "image" }) {
       </div>
 
       {/* Canvas */}
-      <div className="card-purple p-6 mb-8 min-h-[420px] flex items-center justify-center relative overflow-hidden">
+      <div ref={canvasRef} className="card-purple p-6 mb-8 min-h-[420px] flex items-center justify-center relative overflow-hidden">
         <div className="bg-grid absolute inset-0 opacity-20" />
         {result ? (
           <div className="relative w-full max-w-3xl mx-auto">
@@ -62,7 +68,7 @@ export default function CreatePage({ mode = "image" }) {
       )}
 
       {/* Floating prompt */}
-      <PromptBox mode={mode} onResult={setResult} defaultModel={preModel} />
+      <PromptBox mode={mode} onResult={handleResult} defaultModel={preModel} />
     </div>
   );
 }
