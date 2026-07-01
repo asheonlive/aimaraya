@@ -33,7 +33,7 @@ const COMMUNITY = [
 ];
 
 const FAQ = [
-  { q: "What is ArtCraft AI?", a: "ArtCraft AI is an all-in-one AI creative studio that lets you generate images and videos from text or images using 26+ advanced AI models — Sora 2, Veo 3.1, FLUX 1.1 Ultra, Kling, Nano Banana and more — under one subscription." },
+  { q: "What is AI MARAYA?", a: "AI MARAYA is an all-in-one AI creative studio that lets you generate images and videos from text or images using 24+ advanced AI models — Sora 2, Veo 3.1, FLUX 1.1 Ultra, Kling, Ideogram and more — under one subscription." },
   { q: "How does the credit system work?", a: "Every plan comes with a monthly credit balance. Simple images cost 1–4 credits; cinematic videos cost 6–18 depending on model and length. Unused credits roll over up to 2× your monthly quota." },
   { q: "Can I use the images and videos commercially?", a: "Yes — Starter and above include a full commercial-use license. Ultra unlocks priority generation and the highest-quality models." },
   { q: "Which payment methods do you support?", a: "Credit/debit cards, Apple Pay and Google Pay via Stripe. Team invoicing available on Ultra." },
@@ -68,7 +68,7 @@ export default function Landing() {
               in Seconds
             </h1>
             <p className="text-lg text-[#a89dc9] max-w-lg leading-relaxed mb-10">
-              Generate cinematic videos, realistic images, characters, product ads, real estate visuals and social media content with 26+ advanced AI models.
+              Generate cinematic videos, realistic images, characters, product ads, real estate visuals and social media content with 24+ advanced AI models.
             </p>
             <div className="flex flex-wrap gap-4 mb-10">
               <Link to="/auth?mode=register" data-testid="hero-start" className="btn-primary inline-flex items-center gap-2">

@@ -22,7 +22,7 @@ export default function Auth() {
     try {
       if (mode === "register") await register(email, password, name);
       else await login(email, password);
-      toast.success(mode === "register" ? "Welcome to ArtCraft AI" : "Welcome back");
+      toast.success(mode === "register" ? "Welcome to AI MARAYA" : "Welcome back");
       nav("/app");
     } catch (e) {
       toast.error(e.response?.data?.detail || "Authentication failed");
@@ -63,7 +63,7 @@ export default function Auth() {
           {mode === "register" ? (
             <>Already a member? <button data-testid="auth-toggle" onClick={() => setMode("login")} className="text-[#c084fc] underline">Sign in</button></>
           ) : (
-            <>New to ArtCraft AI? <button data-testid="auth-toggle" onClick={() => setMode("register")} className="text-[#c084fc] underline">Create account</button></>
+            <>New to AI MARAYA? <button data-testid="auth-toggle" onClick={() => setMode("register")} className="text-[#c084fc] underline">Create account</button></>
           )}
         </div>
       </div>

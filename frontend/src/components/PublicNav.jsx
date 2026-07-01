@@ -19,7 +19,7 @@ export default function PublicNav() {
           <div className="w-8 h-8 rounded-lg gradient-purple flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-white" strokeWidth={2.5} />
           </div>
-          <span className="font-display text-xl font-semibold tracking-tighter">ArtCraft <span className="gradient-text">AI</span></span>
+          <span className="font-display text-xl font-semibold tracking-tighter">AI <span className="gradient-text">MARAYA</span></span>
         </Link>
         <nav className="hidden md:flex items-center gap-8">
           {items.map((it) => (

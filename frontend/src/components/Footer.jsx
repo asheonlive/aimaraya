@@ -11,10 +11,10 @@ export default function Footer() {
             <div className="w-8 h-8 rounded-lg gradient-purple flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" strokeWidth={2.5} />
             </div>
-            <span className="font-display text-xl font-semibold">ArtCraft <span className="gradient-text">AI</span></span>
+            <span className="font-display text-xl font-semibold">AI <span className="gradient-text">MARAYA</span></span>
           </div>
           <p className="text-sm text-[#a89dc9] max-w-sm leading-relaxed">
-            The all-in-one AI creative studio. Generate cinematic videos, realistic images, characters and ads with 26+ frontier models.
+            The all-in-one AI creative studio. Generate cinematic videos, realistic images, characters and ads with 24+ frontier models.
           </p>
         </div>
         <div>
@@ -37,7 +37,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="border-t border-[#2a2340] py-6 text-center text-xs text-[#6b6188] font-mono">
-        © {new Date().getFullYear()} ARTCRAFT AI · CREATE BEYOND LIMITS
+        © {new Date().getFullYear()} AI MARAYA · CREATE BEYOND LIMITS
       </div>
     </footer>
   );

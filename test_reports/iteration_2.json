@@ -1,0 +1,40 @@
+{
+  "summary": "Verified 'ArtCraft AI' -> 'AI MARAYA' rebrand across all user-visible surfaces (public nav, landing hero, FAQ, footer, auth toggle, register toast, app sidebar, sidebar CTA, topbar credits). All rebrand checks PASS. No visible occurrence of 'ArtCraft/artcraft/ARTCRAFT' on any tested page.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verification_details": {
+    "nav_logo": "PASS - reads 'AI MARAYA' (data-testid=nav-logo)",
+    "hero_subtitle_24plus": "PASS - '24+ advanced AI models' present",
+    "faq_0_question": "PASS - 'What is AI MARAYA?'",
+    "faq_0_answer": "PASS - references 'AI MARAYA', no 'ArtCraft'",
+    "footer_brand": "PASS - 'AI MARAYA'",
+    "footer_copyright": "PASS - '© 2026 AI MARAYA · CREATE BEYOND LIMITS'",
+    "auth_toggle_register_state": "Shows 'Already a member? Sign in' (correct per code; 'New to AI MARAYA?' shows in login state which is standard UX). Rebrand successful.",
+    "auth_toggle_login_state": "Shows 'New to AI MARAYA? Create account' - PASS",
+    "register_success_toast": "PASS - 'Welcome to AI MARAYA' (tested account qa+brandzn90qx@maraya.ai / TestPass123!)",
+    "post_register_nav": "PASS - clean navigation to /app",
+    "sidebar_logo": "PASS - 'AI MARAYA'",
+    "sidebar_download_cta": "PASS - 'Download AI MARAYA'",
+    "topbar_credits": "PASS - '100 CREDITS' pill visible on new account",
+    "app_page_no_artcraft": "PASS - no visible 'ArtCraft/artcraft/ARTCRAFT' anywhere on /app or home"
+  },
+  "critical_code_review_comments": [
+    "MINOR (not user-visible text, but functional): /app/frontend/src/components/AppShell.jsx lines 24-26 still contain external hrefs pointing to https://getartcraft.ai/tutorials, /news, /faq for the Resources sidebar links. The visible LABELS say Tutorials/News/FAQ (no ArtCraft text), so this is not a visible-text rebrand bug, but users clicking those links will be sent to getartcraft.ai. Consider updating these URLs to the AI MARAYA equivalents (or removing until docs are ready). Note: browsers show the destination URL on hover in the status bar."
+  ],
+  "test_report_links": [],
+  "action_items": [
+    "OPTIONAL cleanup (not blocking rebrand ticket): Update the three getartcraft.ai external URLs in /app/frontend/src/components/AppShell.jsx (Tutorials/News/FAQ resource links) to AI MARAYA URLs.",
+    "The two internal code comments in /app/frontend/src/pages/CreatePage.jsx L7 and /app/frontend/src/components/PromptBox.jsx L11 mentioning 'ArtCraft' were explicitly allowed by the reviewer - no action needed."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (frontend-only)", "frontend": "100%" },
+  "test_credentials": "Registered fresh: qa+brandzn90qx@maraya.ai / TestPass123! (new user, 100 credits, redirected to /app)",
+  "seed_data_creation": "One test user account created via public /auth register flow.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Rebrand from 'ArtCraft AI' to 'AI MARAYA' is fully applied across all user-visible surfaces. Only lingering ArtCraft references are: (1) two allowed internal code comments, (2) three external hrefs in AppShell.jsx sidebar Resources pointing to getartcraft.ai domain (not visible text, but functional). If user reports 'still see ArtCraft', it will be from those getartcraft.ai external links."
+}

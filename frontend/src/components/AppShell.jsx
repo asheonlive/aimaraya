@@ -60,7 +60,7 @@ export default function AppShell() {
             <div className="w-7 h-7 rounded-lg gradient-purple flex items-center justify-center">
               <Sparkles className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
             </div>
-            {!collapsed && <span className="font-display font-semibold text-sm">ArtCraft <span className="gradient-text">AI</span></span>}
+            {!collapsed && <span className="font-display font-semibold text-sm">AI <span className="gradient-text">MARAYA</span></span>}
           </Link>
           <button onClick={() => setCollapsed(!collapsed)} className="ml-auto p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/[0.06]">
             <PanelLeft className="w-4 h-4" />
@@ -145,7 +145,7 @@ export default function AppShell() {
         {!collapsed && (
           <div className="p-2 border-t border-white/[0.06]">
             <button className="w-full h-9 rounded-full gradient-purple text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition">
-              <Download className="w-3.5 h-3.5" /> Download ArtCraft
+              <Download className="w-3.5 h-3.5" /> Download AI MARAYA
             </button>
           </div>
         )}
@@ -158,7 +158,7 @@ export default function AppShell() {
             <div className="w-7 h-7 rounded-lg gradient-purple flex items-center justify-center">
               <Sparkles className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
             </div>
-            <span className="font-display font-semibold text-sm">ArtCraft <span className="gradient-text">AI</span></span>
+            <span className="font-display font-semibold text-sm">AI <span className="gradient-text">MARAYA</span></span>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <Link to="/pricing" data-testid="topbar-credits" className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#a855f7]/30 bg-[#a855f7]/10">
