@@ -8,13 +8,13 @@ import {
 
 const STYLES = ["cinematic", "anime", "photorealistic", "3D animation", "watercolor", "noir"];
 const IMAGE_MODELS = [
-  { id: "gpt-image-1",     label: "GPT Image 1 · 5cr",     credits: 5 },
-  { id: "flux-1.1-ultra",  label: "FLUX 1.1 Ultra · 3cr",  credits: 3 },
-  { id: "ideogram-v4",     label: "Ideogram V4 · 3cr",     credits: 3 },
-  { id: "recraft-v4",      label: "Recraft V4 · 3cr",      credits: 3 },
-  { id: "seedream-v2",     label: "Seedream 2 · 3cr",      credits: 3 },
-  { id: "grok-image",      label: "Grok Imagine · 3cr",    credits: 3 },
-  { id: "stability-ultra", label: "Stability Ultra · 4cr", credits: 4 },
+  { id: "gpt-image-1",     label: "GPT Image 1" },
+  { id: "flux-1.1-ultra",  label: "FLUX 1.1 Ultra" },
+  { id: "ideogram-v4",     label: "Ideogram V4" },
+  { id: "recraft-v4",      label: "Recraft V4" },
+  { id: "seedream-v2",     label: "Seedream 2" },
+  { id: "grok-image",      label: "Grok Imagine" },
+  { id: "stability-ultra", label: "Stability Ultra" },
 ];
 const VIDEO_MODELS = [
   { id: "seedance-fast", label: "Seedance Fast · 5s" },
@@ -41,7 +41,7 @@ export default function Storyboard() {
     try {
       const r = await api.post(`/storyboard/${storyId}/animate`, { video_model: videoModel });
       setStory(r.data.storyboard);
-      setUser({ ...user, credits: r.data.credits_remaining });
+      setUser({ ...user, credits: r.data.daily_videos_remaining ?? r.data.credits_remaining, daily_videos_remaining: r.data.daily_videos_remaining ?? r.data.credits_remaining, daily_video_limit: r.data.daily_video_limit ?? user.daily_video_limit });
       toast.success("Videos ready — hover a panel to preview");
     } catch (e) {
       // On timeout, poll the storyboard directly
@@ -62,7 +62,7 @@ export default function Storyboard() {
     try {
       const r = await api.post("/storyboard", { concept, panels, style, image_model: imageModel });
       setStory(r.data.storyboard);
-      setUser({ ...user, credits: r.data.credits_remaining });
+      setUser({ ...user, credits: r.data.daily_videos_remaining ?? r.data.credits_remaining, daily_videos_remaining: r.data.daily_videos_remaining ?? r.data.credits_remaining, daily_video_limit: r.data.daily_video_limit ?? user.daily_video_limit });
       const ok = (r.data.storyboard.panels || []).filter(p => p.media_url).length;
       toast.success(`Storyboard ready · ${ok} panels`);
       setBusy(false);
@@ -80,9 +80,8 @@ export default function Storyboard() {
     await doAnimate(story.id);
   };
 
-  const estImage = (IMAGE_MODELS.find(m => m.id === imageModel)?.credits || 5) * panels + 2;
   const validPanels = (story?.panels || []).filter(p => p.media_url).length;
-  const videoCost = validPanels * (VIDEO_MODELS.find(v => v.id === videoModel) ? 6 : 6);
+  const videosRemaining = user?.daily_videos_remaining ?? user?.credits ?? 0;
 
   return (
     <div className="max-w-6xl mx-auto px-6 lg:px-10 py-8">
@@ -135,7 +134,7 @@ export default function Storyboard() {
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex flex-col gap-2">
-            <div className="text-xs text-[#a89dc9]">Est. cost: <span className="text-[#c084fc] font-mono">{estImage} credits</span> for {panels} panels{autoAnimate && <span> + <span className="text-emerald-400 font-mono">{4 * panels} credits</span> animation</span>}</div>
+            <div className="text-xs text-[#a89dc9]">Daily videos: <span className="text-[#c084fc] font-mono">{videosRemaining}/{user?.daily_video_limit ?? 12}</span>{autoAnimate && <span> · animation uses {panels} videos</span>}</div>
             <label className="flex items-center gap-2 text-xs text-[#a89dc9] cursor-pointer select-none" data-testid="story-autoanimate">
               <input type="checkbox" checked={autoAnimate} onChange={(e) => setAutoAnimate(e.target.checked)} className="w-4 h-4 rounded border-[#2a2340] bg-[#0d0919] accent-[#a855f7]" />
               <span>Auto-animate every panel into video after generation</span>
@@ -174,7 +173,7 @@ export default function Storyboard() {
               <div className="font-display text-2xl tracking-tighter mt-1">Your storyboard</div>
             </div>
             <button data-testid="story-animate" onClick={animate} disabled={animating || validPanels === 0} className="btn-primary text-sm inline-flex items-center gap-2">
-              {animating ? <><Loader2 className="w-4 h-4 animate-spin" /> Animating {validPanels} panels…</> : <><Film className="w-4 h-4" /> Animate All ({6 * validPanels} credits)</>}
+              {animating ? <><Loader2 className="w-4 h-4 animate-spin" /> Animating {validPanels} panels…</> : <><Film className="w-4 h-4" /> Animate All ({validPanels} videos)</>}
             </button>
           </div>
 

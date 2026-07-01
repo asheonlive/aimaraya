@@ -27,8 +27,8 @@ export default function Settings() {
         <div className="text-xs uppercase tracking-[0.2em] text-[#a89dc9] mb-4">Plan</div>
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-lg">Free · {user.credits} credits</div>
-            <div className="text-xs text-[#a89dc9]">Upgrade to unlock priority generation.</div>
+            <div className="text-lg">Daily videos · {user.daily_videos_remaining ?? user.credits ?? 0}/{user.daily_video_limit ?? 12}</div>
+            <div className="text-xs text-[#a89dc9]">Your video allowance resets every day.</div>
           </div>
           <a href="/pricing" className="btn-primary text-sm">Upgrade</a>
         </div>

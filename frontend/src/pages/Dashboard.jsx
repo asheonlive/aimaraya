@@ -30,7 +30,7 @@ export default function Dashboard() {
   const trending = TEMPLATES.slice(0, 5);
 
   const stats = [
-    { label: "Credits available", value: user.credits, format: (v) => v.toLocaleString(), accent: true },
+    { label: "Videos left today", value: user.daily_videos_remaining ?? user.credits ?? 0, format: (v) => `${v}/${user.daily_video_limit ?? 12}`, accent: true },
     { label: "Generations", value: gens?.length || 0, format: (v) => v.toString() },
     { label: "Models unlocked", value: 30, format: (v) => v.toString() },
   ];

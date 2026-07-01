@@ -71,7 +71,7 @@ export default function Studio() {
     try {
       const r = await api.post("/generate", { prompt, model_id: selected.id, aspect_ratio: ratio });
       setResult(r.data.generation);
-      setUser({ ...user, credits: r.data.credits_remaining });
+      setUser({ ...user, credits: r.data.daily_videos_remaining ?? r.data.credits_remaining, daily_videos_remaining: r.data.daily_videos_remaining ?? r.data.credits_remaining, daily_video_limit: r.data.daily_video_limit ?? user.daily_video_limit });
       toast.success(`Generated with ${selected.name}`);
     } catch (e) {
       toast.error(e.response?.data?.detail || "Generation failed");
@@ -130,7 +130,7 @@ export default function Studio() {
                   <SelectItem key={m.id} value={m.id}>
                     <div className="flex items-center justify-between w-full gap-3">
                       <span>{m.name}</span>
-                      <span className="text-[10px] font-mono text-[#a89dc9]">{m.credits}CR</span>
+                      <span className="text-[10px] font-mono text-[#a89dc9]">{m.type === "video" ? "daily" : "included"}</span>
                     </div>
                   </SelectItem>
                 ))}
@@ -221,7 +221,7 @@ export default function Studio() {
             disabled={loading}
             className="w-full h-14 gradient-purple hover:opacity-90 rounded-xl text-base font-medium"
           >
-            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</> : <><Sparkles className="w-4 h-4 mr-2" /> Generate ({selected?.credits ?? "-"} credits)</>}
+            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</> : <><Sparkles className="w-4 h-4 mr-2" /> Generate</>}
           </Button>
         </div>
 

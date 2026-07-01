@@ -39,22 +39,20 @@ const TESTIMONIALS = [
   { name: "Priya S.",     role: "Indie Filmmaker",       img: "https://i.pravatar.cc/80?img=32", q: "Kling with Start→End frames is unreal. I story-boarded a short film in a single afternoon." },
   { name: "Kenji Ito",    role: "Studio Owner · Tokyo",  img: "https://i.pravatar.cc/80?img=52", q: "Every model in one place. My team stopped juggling subscriptions." },
   { name: "Aisha M.",     role: "Founder · Fashion",     img: "https://i.pravatar.cc/80?img=48", q: "Ideogram + FLUX Kontext on the same balance? Zero context switching. Ship faster." },
-  { name: "David Chen",   role: "Head of Content",       img: "https://i.pravatar.cc/80?img=33", q: "The credit model is honest — failed gens get refunded. Trust matters at this price point." },
+  { name: "David Chen",   role: "Head of Content",       img: "https://i.pravatar.cc/80?img=33", q: "The daily video allowance is simple and clear. Trust matters at this price point." },
 ];
 
 const FAQ = [
-  { q: "What is AI MARAYA?", a: "The creative studio that puts every frontier model — Sora 2, Veo 3.1, FLUX 1.1 Ultra, Kling, GPT Image 2, Ideogram — behind one subscription and one credit balance." },
-  { q: "How does the credit system work?", a: "Each plan comes with a monthly balance. Images cost 3–6 credits. Videos cost 4–25 depending on model and duration. Failed generations refund automatically." },
-  { q: "Can I use outputs commercially?", a: "Yes — Starter and above include a commercial-use license. Ultra unlocks premium models and priority queue." },
-  { q: "Is there a free tier?", a: "Yes — 100 credits on signup, no card required. Enough to try image models, storyboards and short video clips." },
+  { q: "What is AI MARAYA?", a: "The creative studio that puts every frontier model — Sora 2, Veo 3.1, FLUX 1.1 Ultra, Kling, GPT Image 2, Ideogram — behind one subscription and one daily video allowance." },
+  { q: "How does access work?", a: "Create or renew access in the AI MARAYA Telegram bot, then paste the activation key on the website to start generating." },
+  { q: "Can I use outputs commercially?", a: "Paid access is intended for creator and commercial workflows, subject to the model providers' terms and acceptable-use rules." },
+  { q: "Is there a free tier?", a: "Trial access is handled through activation keys from the Telegram bot when available." },
   { q: "Which video models are live?", a: "Sora 2, Sora 2 Pro, Veo 3.1 Fast, Veo 2, Kling 3 Omni, Kling 2.5 Turbo, Kling Start→End, Kling Camera Control, Seedance Pro/Fast, Grok Imagine, HappyHorse, Luma Ray Flash 2, PixVerse, MiniMax Hailuo — plus more shipping monthly." },
 ];
 
 const PLANS = [
-  { id: "free", name: "Free", monthly: 0, yearly: 0, credits: "100 credits", perks: ["Up to 20 images", "5-sec video clips", "Standard models"] },
-  { id: "starter", name: "Starter", monthly: 12, yearly: 108, credits: "3,000 credits/mo", perks: ["Up to 15-sec video", "Fast models", "Commercial use"] },
-  { id: "pro", name: "Pro", monthly: 29, yearly: 261, credits: "10,000 credits/mo", perks: ["Up to 30-sec video", "Priority queue", "All frontier models", "Commercial use"], popular: true },
-  { id: "ultra", name: "Ultra", monthly: 59, yearly: 531, credits: "30,000 credits/mo", perks: ["Up to 60-sec video", "Sora 2 Pro included", "Highest priority", "Team seats"] },
+  { id: "trial", name: "Trial", monthly: 0, yearly: 0, credits: "Activation key", perks: ["Short website access", "Image and video models", "Telegram code required"] },
+  { id: "access", name: "AI MARAYA Access", monthly: 10, yearly: 10, credits: "7 days", perks: ["ArtCraft engine", "Video and image generation", "Renew from Telegram"], popular: true },
 ];
 
 const SEEDANCE_SHOWCASE = [
@@ -92,7 +90,7 @@ const SHOWCASE_COL_3 = [
 
 // Latest / spotlight models (real hosted assets)
 const LATEST_MODELS = [
-  { name: "Seedance 2.0",      badge: "NEW",  desc: "Cinematic video, 4-credit clips", img: "https://cdn.openart.ai/assets/internal/uploads/image_CsJ_IqM2_600x800_1781682208175.webp" },
+  { name: "Seedance 2.0",      badge: "NEW",  desc: "Cinematic daily video generation", img: "https://cdn.openart.ai/assets/internal/uploads/image_CsJ_IqM2_600x800_1781682208175.webp" },
   { name: "Gemini Omni",       badge: "BETA", desc: "Multi-modal reasoning + image",   img: "https://cdn.openart.ai/assets/internal/uploads/image_iLDTHFIk_720x402_1782316634275.webp" },
   { name: "Nano Banana Pro",   badge: "NEW",  desc: "High-detail image editing",       img: "https://cdn.openart.ai/assets/internal/uploads/image_2olSwhi1_600x800_1781682207920.webp" },
   { name: "Kling 3.0 Omni",    badge: "LIVE", desc: "Camera-controlled cinematic",     img: "https://cdn.openart.ai/assets/internal/uploads/image_g_OTQ1Fw_600x800_1781682207947.webp" },
@@ -169,11 +167,11 @@ export default function Landing() {
               <span className="text-outline">AI content</span> in seconds
             </h1>
             <p className="text-lg text-[#a89dc9] max-w-2xl mx-auto leading-relaxed mb-10 fade-in" style={{ animationDelay: "0.15s" }}>
-              One studio. Every frontier model. Cinematic videos, hyper-realistic images, characters, product ads and storyboards — under a single subscription.
+              One studio. Every frontier model. Cinematic videos, hyper-realistic images, characters, product ads and storyboards with Telegram-powered access.
             </p>
             <div className="flex flex-wrap gap-4 justify-center mb-16 fade-in" style={{ animationDelay: "0.3s" }}>
               <Link to="/auth?mode=register" data-testid="hero-start" className="btn-primary inline-flex items-center gap-2 relative pulse-ring">
-                Start Creating Free <ArrowRight className="w-4 h-4" />
+                Enter Activation Key <ArrowRight className="w-4 h-4" />
               </Link>
               <Link to="/models" data-testid="hero-models" className="btn-ghost inline-flex items-center gap-2">
                 <Play className="w-4 h-4" /> See all 30 models
@@ -193,7 +191,7 @@ export default function Landing() {
               <div className="pointer-events-auto pill bg-black/70 backdrop-blur-md border-white/20 !py-2 !px-4 font-mono text-[11px] uppercase tracking-widest">
                 <span className="text-[#c084fc]">30 models</span>
                 <span className="mx-2 text-white/40">·</span>
-                <span className="text-emerald-400">1 credit balance</span>
+                <span className="text-emerald-400">Telegram access</span>
                 <span className="mx-2 text-white/40">·</span>
                 <span className="text-white/80">Live</span>
               </div>
@@ -228,18 +226,18 @@ export default function Landing() {
               Cinematic video at <span className="gradient-text">a fraction</span> of the price.
             </h2>
             <p className="text-[#a89dc9] max-w-xl text-sm md:text-base">
-              ByteDance <span className="text-white font-semibold">Seedance 2.0</span> delivers premium motion at <span className="text-emerald-400 font-mono">4 credits</span> per clip.
+              ByteDance <span className="text-white font-semibold">Seedance 2.0</span> delivers premium motion through the AI MARAYA generation engine.
               Same fidelity as models charging 3-5x. Real footage generated by our users below.
             </p>
           </div>
           <div className="flex gap-3">
             <div className="px-4 py-3 rounded-xl border border-emerald-400/30 bg-emerald-400/5">
               <div className="text-[10px] uppercase tracking-wider text-emerald-300/80">Seedance Fast</div>
-              <div className="font-mono text-emerald-300 text-lg">4 credits · 5s</div>
+              <div className="font-mono text-emerald-300 text-lg">Fast · 5s+</div>
             </div>
             <div className="px-4 py-3 rounded-xl border border-[#a855f7]/30 bg-[#a855f7]/5">
               <div className="text-[10px] uppercase tracking-wider text-[#c084fc]">Seedance Pro</div>
-              <div className="font-mono text-[#c084fc] text-lg">8 credits · 720p</div>
+              <div className="font-mono text-[#c084fc] text-lg">Pro · 720p</div>
             </div>
           </div>
         </div>
@@ -283,11 +281,11 @@ export default function Landing() {
             data-testid="seedance-cta"
             className="btn-primary inline-flex items-center gap-2"
           >
-            <Video className="w-4 h-4" /> Try Seedance 2.0 · From 4 credits
+            <Video className="w-4 h-4" /> Try Seedance 2.0
             <ArrowRight className="w-4 h-4" />
           </Link>
           <div className="text-xs text-[#a89dc9] mt-3 font-mono">
-            No card required · 100 free credits on sign-up
+            Use your Telegram activation key to create on the website
           </div>
         </div>
       </section>
@@ -442,8 +440,8 @@ export default function Landing() {
                 {p.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] uppercase tracking-[0.2em] px-3 py-1 rounded-full">Most Popular</span>}
                 <div className="text-sm font-medium mb-1">{p.name}</div>
                 <div className="flex items-baseline gap-1 mb-2">
-                  <span className="font-display text-5xl tracking-tighter">${price}</span>
-                  <span className="text-xs opacity-70">/mo</span>
+                  <span className="font-display text-5xl tracking-tighter">{p.monthly === 0 ? "Trial" : "$10"}</span>
+                  <span className="text-xs opacity-70">access</span>
                 </div>
                 <div className={`text-xs mb-6 ${p.popular ? "text-white/80" : "text-[#a89dc9]"}`}>{p.credits}</div>
                 <ul className="space-y-2.5 mb-6 flex-1">
@@ -454,7 +452,7 @@ export default function Landing() {
                   ))}
                 </ul>
                 <Link to="/pricing" data-testid={`land-plan-${p.id}`} className={`block text-center text-sm py-2.5 rounded-lg font-medium ${p.popular ? "bg-black text-white hover:bg-black/80" : "bg-[#a855f7]/10 border border-[#a855f7]/30 hover:bg-[#a855f7]/20"}`}>
-                  {p.monthly === 0 ? "Start Free" : "Choose Plan"}
+                  Enter Key
                 </Link>
               </div>
             );
@@ -488,9 +486,9 @@ export default function Landing() {
             Ready to create<br/>
             <span className="gradient-text">something remarkable?</span>
           </h2>
-          <p className="text-[#a89dc9] max-w-lg mx-auto mb-10">100 free credits. No card required. Cancel anytime.</p>
+          <p className="text-[#a89dc9] max-w-lg mx-auto mb-10">Create or renew access in Telegram, then continue here with your activation key.</p>
           <Link to="/auth?mode=register" data-testid="cta-final" className="btn-primary inline-flex items-center gap-2 text-base pulse-ring relative">
-            Get started free <ArrowRight className="w-4 h-4" />
+            Enter activation key <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </section>

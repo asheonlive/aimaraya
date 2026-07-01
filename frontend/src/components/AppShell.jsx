@@ -140,8 +140,8 @@ export default function AppShell() {
           <div className="ml-auto flex items-center gap-2">
             <Link to="/pricing" data-testid="topbar-credits" className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#a855f7]/30 bg-[#a855f7]/10">
               <div className="w-1.5 h-1.5 rounded-full bg-[#a855f7] shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
-              <span className="text-xs font-mono text-white">{user.credits.toLocaleString()}</span>
-              <span className="text-[10px] text-white/60 uppercase tracking-wider">credits</span>
+              <span className="text-xs font-mono text-white">{user.daily_videos_remaining ?? user.credits ?? 0}/{user.daily_video_limit ?? 12}</span>
+              <span className="text-[10px] text-white/60 uppercase tracking-wider">videos today</span>
             </Link>
             <Link to="/pricing" className="btn-primary !py-1.5 !px-3 text-xs">Upgrade</Link>
             <button className="p-2 text-white/60 hover:text-white transition"><Bell className="w-4 h-4" /></button>

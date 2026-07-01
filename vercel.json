@@ -1,0 +1,19 @@
+{
+  "buildCommand": "cd frontend && yarn build",
+  "installCommand": "cd frontend && yarn install --network-timeout 600000",
+  "outputDirectory": "frontend/build",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://pointer-personalized-accomplished-springs.trycloudflare.com/api/:path*"
+    },
+    {
+      "source": "/files/:path*",
+      "destination": "https://pointer-personalized-accomplished-springs.trycloudflare.com/files/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

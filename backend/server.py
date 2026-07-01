@@ -30,6 +30,7 @@ from models_catalog import (
     build_comfy_workflow,
 )
 from comfy_cloud_client import ComfyCloudClient, ComfyCloudError, collect_output_files
+from artcraft_client import ArtCraftClient, ArtCraftError, ArtCraftPool
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -66,6 +67,36 @@ comfy = ComfyCloudClient(
     password=os.environ.get("COMFY_PASSWORD", ""),
     firebase_api_key=os.environ.get("COMFY_FIREBASE_API_KEY", ""),
 )
+artcraft_pool = ArtCraftPool()
+
+ARTCRAFT_VIDEO_MODELS = {
+    "sora-2": "sora_2",
+    "sora-2-pro": "sora_2_pro",
+    "veo-3.1-fast": "veo_3p1_fast",
+    "veo-2": "veo_2",
+    "kling-omni": "kling_3p0_pro",
+    "seedance-pro": "seedance_2p0",
+    "seedance-fast": "seedance_2p0_bp",
+    "grok-video": "grok_imagine_video",
+    "happyhorse": "happy_horse_1p0",
+}
+
+ARTCRAFT_IMAGE_MODELS = {
+    "nano-banana": "nano_banana",
+    "nano-banana-2": "nano_banana_2",
+    "nano-banana-pro": "nano_banana_pro",
+    "gpt-image-2": "gpt_image_2",
+    "grok-image": "grok_image",
+    "flux-1.1-ultra": "flux_pro_1p1_ultra",
+}
+
+def _artcraft_enabled() -> bool:
+    return os.environ.get("ARTCRAFT_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+
+def _artcraft_model_id(model: dict) -> Optional[str]:
+    if model["type"] == "video":
+        return ARTCRAFT_VIDEO_MODELS.get(model["id"])
+    return ARTCRAFT_IMAGE_MODELS.get(model["id"])
 
 # ---------- Schemas ----------
 class RegisterReq(BaseModel):
@@ -81,6 +112,8 @@ class GenerateReq(BaseModel):
     prompt: str
     model_id: str = "nano-banana"
     aspect_ratio: Optional[str] = "1:1"
+    duration: Optional[str] = "5s"
+    resolution: Optional[str] = "1K"
     ref_image_url: Optional[str] = None
     character_id: Optional[str] = None
     start_frame_url: Optional[str] = None
@@ -238,10 +271,70 @@ async def _generate_comfy(model: dict, prompt: str, aspect_ratio: str,
     return fname, ext
 
 
+async def _generate_artcraft(
+    model: dict,
+    prompt: str,
+    aspect_ratio: str,
+    duration: str,
+    resolution: str,
+    ref_local_path: Optional[Path] = None,
+    start_local_path: Optional[Path] = None,
+    end_local_path: Optional[Path] = None,
+) -> str:
+    provider_model = _artcraft_model_id(model)
+    if not provider_model:
+        raise ArtCraftError(f"{model['name']} is not mapped to ArtCraft.")
+
+    last_error: Exception | None = None
+    attempts = max(1, artcraft_pool.summary()["total"])
+    for _ in range(attempts):
+        client: ArtCraftClient | None = None
+        try:
+            client = await artcraft_pool.borrow()
+            credits = await client.credits()
+            if credits <= 0:
+                await artcraft_pool.block(client)
+                continue
+
+            if model["type"] == "video":
+                job_id = await client.generate_video(
+                    prompt=prompt,
+                    model=provider_model,
+                    aspect_ratio=aspect_ratio,
+                    duration=duration or "5s",
+                    resolution=resolution or "720p",
+                    ref_image=start_local_path or ref_local_path,
+                    end_image=end_local_path,
+                )
+                timeout = int(os.environ.get("ARTCRAFT_VIDEO_TIMEOUT_SECONDS", "900"))
+            else:
+                job_id = await client.generate_image(
+                    prompt=prompt,
+                    model=provider_model,
+                    aspect_ratio=aspect_ratio,
+                    resolution=resolution or "1K",
+                    ref_image=ref_local_path,
+                )
+                timeout = int(os.environ.get("ARTCRAFT_IMAGE_TIMEOUT_SECONDS", "300"))
+
+            url = await client.poll_job(job_id, timeout)
+            await artcraft_pool.release(client)
+            return url
+        except Exception as exc:
+            last_error = exc
+            if client:
+                text = str(exc).lower()
+                if "login" in text or "credit" in text:
+                    await artcraft_pool.block(client)
+                else:
+                    await artcraft_pool.release(client)
+    raise ArtCraftError("ArtCraft generation is unavailable.") from last_error
+
+
 # ---------- Routes ----------
 @api.get("/")
 async def root():
-    return {"status": "ok", "service": "Maraya AI"}
+    return {"status": "ok", "service": "Maraya AI", "artcraft": artcraft_pool.summary()}
 
 @api.get("/models")
 async def get_models():
@@ -321,8 +414,21 @@ async def generate(req: GenerateReq, user=Depends(current_user)):
         if char:
             effective_prompt = f"{req.prompt} — Featuring character '{char['name']}'"
 
-        if model["engine_type"] == "gemini":
+        if _artcraft_enabled() and _artcraft_model_id(model):
+            media_url = await _generate_artcraft(
+                model,
+                effective_prompt,
+                req.aspect_ratio,
+                req.duration or "5s",
+                req.resolution or ("720p" if model["type"] == "video" else "1K"),
+                ref_local_path=ref_local,
+                start_local_path=start_local,
+                end_local_path=end_local,
+            )
+            fname = media_url
+        elif model["engine_type"] == "gemini":
             fname, _ext = await _generate_gemini(model, effective_prompt, req.aspect_ratio)
+            media_url = f"/api/media/{fname}"
         elif model["engine_type"] == "comfy":
             fname, _ext = await _generate_comfy(
                 model, effective_prompt, req.aspect_ratio,
@@ -331,10 +437,10 @@ async def generate(req: GenerateReq, user=Depends(current_user)):
                 end_local_path=end_local,
                 camera_control=req.camera_control,
             )
+            media_url = f"/api/media/{fname}"
         else:
             raise RuntimeError(f"Unknown engine_type: {model['engine_type']}")
 
-        media_url = f"/api/media/{fname}"
         gen_id = str(uuid.uuid4())
         gen_doc = {
             "id": gen_id, "user_id": user["id"], "prompt": req.prompt,

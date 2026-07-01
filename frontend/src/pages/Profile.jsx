@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import {
-  User as UserIcon, Mail, CreditCard, Calendar, LogOut, Crown, Sparkles,
+  User as UserIcon, Mail, Video as VideoIcon, Calendar, LogOut, Crown, Sparkles,
   Image as ImageIcon, Video, Copy, Check, ShieldCheck, Rocket,
 } from "lucide-react";
 
@@ -103,30 +103,30 @@ export default function Profile() {
         </button>
       </div>
 
-      {/* Credits + upgrade */}
+      {/* Daily allowance + plan */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="card-purple p-5 md:col-span-2" data-testid="profile-credits">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-white/50">
-              <CreditCard className="w-3.5 h-3.5" /> Credit Balance
+              <VideoIcon className="w-3.5 h-3.5" /> Daily Video Allowance
             </div>
             <Crown className="w-4 h-4 text-[#c084fc]" />
           </div>
           <div className="flex items-baseline gap-2 mb-4">
-            <div className="font-display text-5xl tracking-tighter gradient-text">{user.credits.toLocaleString()}</div>
-            <div className="text-xs uppercase tracking-wider text-white/50">credits</div>
+            <div className="font-display text-5xl tracking-tighter gradient-text">{user.daily_videos_remaining ?? user.credits ?? 0}</div>
+            <div className="text-xs uppercase tracking-wider text-white/50">of {user.daily_video_limit ?? 12} videos left today</div>
           </div>
           <Link to="/pricing" data-testid="profile-upgrade-btn" className="btn-primary text-sm inline-flex items-center gap-2">
-            <Rocket className="w-4 h-4" /> Add Credits
+            <Rocket className="w-4 h-4" /> Access Options
           </Link>
         </div>
         <div className="card-purple p-5" data-testid="profile-plan">
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-white/50 mb-3">
             <ShieldCheck className="w-3.5 h-3.5" /> Plan
           </div>
-          <div className="font-display text-2xl tracking-tighter mb-1">Free</div>
-          <div className="text-xs text-[#a89dc9] mb-4">100 credits on sign-up · buy more anytime</div>
-          <Link to="/pricing" className="text-xs text-[#c084fc] hover:underline">See paid plans →</Link>
+          <div className="font-display text-2xl tracking-tighter mb-1">Activation Key</div>
+          <div className="text-xs text-[#a89dc9] mb-4">Access is managed through Telegram.</div>
+          <Link to="/pricing" className="text-xs text-[#c084fc] hover:underline">See access options →</Link>
         </div>
       </div>
 
@@ -146,7 +146,7 @@ export default function Profile() {
           <QuickLink to="/app/create-image" label="Create Image" desc="Text-to-image studio" />
           <QuickLink to="/app/create-video" label="Create Video" desc="Text-to-video studio" />
           <QuickLink to="/app/storyboard" label="Storyboard Agent" desc="Prompt → shots → video" />
-          <QuickLink to="/pricing" label="Billing & Plans" desc="Manage credit packs" />
+          <QuickLink to="/pricing" label="Billing & Plans" desc="Manage access" />
           <QuickLink to="/contact" label="Contact Support" desc="Report issues or ask questions" />
         </div>
       </div>

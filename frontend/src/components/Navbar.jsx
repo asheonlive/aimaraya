@@ -39,8 +39,8 @@ export default function Navbar() {
           {user ? (
             <>
               <Link to="/dashboard" data-testid="nav-credits" className="hidden sm:flex items-center gap-2 px-3 py-1.5 border border-[#27272A] hover:border-[#E1FF01] transition-colors">
-                <span className="text-xs uppercase tracking-[0.2em] text-[#A1A1AA]">Credits</span>
-                <span className="font-mono text-sm text-[#E1FF01]">{user.credits}</span>
+                <span className="text-xs uppercase tracking-[0.2em] text-[#A1A1AA]">Daily videos</span>
+                <span className="font-mono text-sm text-[#E1FF01]">{user.daily_videos_remaining ?? user.credits ?? 0}/{user.daily_video_limit ?? 12}</span>
               </Link>
               <button data-testid="nav-logout" onClick={() => { logout(); nav("/"); }} className="p-2 text-[#A1A1AA] hover:text-white transition-colors">
                 <LogOut className="w-4 h-4" />

@@ -4,7 +4,7 @@ import { api, resolveMedia } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import CharactersModal from "@/components/CharactersModal";
 import {
-  Plus, X, Image as ImageIcon, Video, Music, Copy, Coins,
+  Plus, X, Image as ImageIcon, Video, Music, Copy,
   Users, Clock, Maximize2,
 } from "lucide-react";
 
@@ -13,7 +13,7 @@ const MODEL_SUPPORTS_IMAGE_REF = ["flux-kontext-pro", "flux-kontext-max", "flux-
 export default function PromptBox({ mode = "image", onResult, onGenerating, defaultModel }) {
   const { user, setUser } = useAuth();
   const [models, setModels] = useState([]);
-  const [modelId, setModelId] = useState(defaultModel || (mode === "video" ? "seedance-pro" : "flux-kontext-pro"));
+  const [modelId, setModelId] = useState(defaultModel || (mode === "video" ? "vseeds" : "in2"));
   const [prompt, setPrompt] = useState("");
   const [aspect, setAspect] = useState(mode === "video" ? "9:16" : "1:1");
   const [resolution, setResolution] = useState(mode === "video" ? "720p" : "1K");
@@ -43,7 +43,7 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
     }
   }, [modelId, mode]);
 
-  const cost = (selected?.credits || 0) * count;
+  const videosRemaining = user?.daily_videos_remaining ?? user?.credits ?? 0;
   const modelSupportsImageRef = selected && MODEL_SUPPORTS_IMAGE_REF.includes(selected.id);
   const caps = selected?.caps || {};
   const hasStartFrame = !!caps.start_frame;
@@ -79,6 +79,8 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
         prompt,
         model_id: selected.id,
         aspect_ratio: aspect,
+        duration,
+        resolution,
         ref_image_url: refImage?.url || null,
         character_id: character?.id || null,
         start_frame_url: startFrame?.url || null,
@@ -86,7 +88,7 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
         camera_control: cameraCtrl || null,
       };
       const r = await api.post("/generate", body);
-      setUser({ ...user, credits: r.data.credits_remaining });
+      setUser({ ...user, credits: r.data.daily_videos_remaining ?? r.data.credits_remaining, daily_videos_remaining: r.data.daily_videos_remaining ?? r.data.credits_remaining, daily_video_limit: r.data.daily_video_limit ?? user.daily_video_limit });
       onResult?.(r.data.generation);
       toast.success(`Generated with ${selected.name}`);
     } catch (e) {
@@ -117,10 +119,6 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
                 <RefSlot icon={ImageIcon} label="Image Ref" limit="0/9" hint="Upload images"
                   preview={refImage?.preview} onPick={() => imgFileRef.current?.click()}
                   onClear={() => setRefImage(null)} />
-                <div className="hidden sm:block w-[1px] bg-white/10" />
-                <RefSlot icon={Video} label="Video Ref" limit="0/3" hint="Coming soon" disabled />
-                <div className="hidden sm:block w-[1px] bg-white/10" />
-                <RefSlot icon={Music} label="Audio Ref" limit="0/3" hint="Coming soon" disabled />
               </>
             )}
           </div>
@@ -221,10 +219,7 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
                 className="group flex h-[34px] flex-1 sm:flex-none items-center justify-center gap-2 rounded-lg gradient-purple hover:opacity-90 px-4 text-sm text-white disabled:opacity-50"
               >
                 <span className="truncate">{loading ? "Generating..." : "Generate"}</span>
-                <span className="flex items-center gap-1 opacity-80" title={`${cost} credits`}>
-                  <Coins className="w-3 h-3" />
-                  <span className="text-[13px] font-bold">{cost}</span>
-                </span>
+                {mode === "video" && <span className="text-[12px] font-semibold opacity-80">{videosRemaining}/{user?.daily_video_limit ?? 12} today</span>}
               </button>
             </div>
           </div>

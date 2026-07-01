@@ -68,6 +68,18 @@ def build_comfy_workflow(model: dict, prompt: str, aspect_ratio: str = "16:9",
 # ============================ CATALOG ========================================
 MODELS: list[dict[str, Any]] = [
     # --------------------------- IMAGE / Comfy ----------------------------
+    {"id": "nano-banana", "name": "Nano Banana", "type": "image",
+     "category": "Fast", "credits": 2, "available": True,
+     "tagline": "Fast ArtCraft image generation",
+     "engine_type": "artcraft"},
+    {"id": "nano-banana-2", "name": "Nano Banana 2", "type": "image",
+     "category": "Fast", "credits": 3, "available": True,
+     "tagline": "Recommended ArtCraft image model",
+     "engine_type": "artcraft"},
+    {"id": "nano-banana-pro", "name": "Nano Banana Pro", "type": "image",
+     "category": "Premium", "credits": 5, "available": True,
+     "tagline": "Premium ArtCraft image quality",
+     "engine_type": "artcraft"},
     {"id": "flux-1.1-ultra", "name": "FLUX 1.1 Ultra", "type": "image",
      "category": "Cinematic", "credits": 3, "available": True,
      "tagline": "Black Forest Labs flagship · maximum quality",

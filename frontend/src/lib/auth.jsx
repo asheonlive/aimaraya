@@ -21,15 +21,15 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { refresh(); }, []);
 
-  const login = async (email, password) => {
-    const res = await api.post("/auth/login", { email, password });
+  const login = async (key) => {
+    const res = await api.post("/auth/login", { key, password: key, email: key });
     localStorage.setItem("maraya_token", res.data.token);
     setUser(res.data.user);
     return res.data.user;
   };
 
-  const register = async (email, password, name) => {
-    const res = await api.post("/auth/register", { email, password, name });
+  const register = async (key) => {
+    const res = await api.post("/auth/register", { key, password: key, email: key });
     localStorage.setItem("maraya_token", res.data.token);
     setUser(res.data.user);
     return res.data.user;
