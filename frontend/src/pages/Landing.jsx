@@ -65,6 +65,29 @@ const SEEDANCE_SHOWCASE = [
   { src: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",poster:"https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800", title: "Michelin Kitchen",   prompt: "Chef finishing a plate, steam swirls, cinematic close-up" },
 ];
 
+// ------------------------- Hero showcase columns -----------------------
+const SHOWCASE_COL_1 = [
+  { img: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=600&q=80", label: "Villa · Veo 3.1", tag: "VIDEO" },
+  { img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&q=80",     label: "Portrait · FLUX 1.1", tag: "IMAGE" },
+  { img: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600&q=80",  label: "Auto · Seedance Pro", tag: "VIDEO" },
+  { img: "https://images.unsplash.com/photo-1541643600914-78b084683601?w=600&q=80",  label: "Perfume · GPT Image", tag: "IMAGE" },
+  { img: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=600&q=80",  label: "Neon · Ideogram V4", tag: "IMAGE" },
+];
+const SHOWCASE_COL_2 = [
+  { img: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&q=80", label: "City · Sora 2", tag: "VIDEO" },
+  { img: "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=600&q=80",  label: "Desert · Kling Omni", tag: "VIDEO" },
+  { img: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&q=80",  label: "Chef · Grok Imagine", tag: "VIDEO" },
+  { img: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&q=80",  label: "Landscape · Luma", tag: "VIDEO" },
+  { img: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&q=80",  label: "Fashion · Recraft V4", tag: "IMAGE" },
+];
+const SHOWCASE_COL_3 = [
+  { img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&q=80",  label: "Model · FLUX Kontext", tag: "IMAGE" },
+  { img: "https://images.unsplash.com/photo-1602934585418-f588bea4215c?w=600&q=80",  label: "Cosmic · Stability", tag: "IMAGE" },
+  { img: "https://images.unsplash.com/photo-1533450718592-29d45635f0a9?w=600&q=80",  label: "Sneaker · Seedream", tag: "IMAGE" },
+  { img: "https://images.unsplash.com/photo-1493666438817-866a91353ca9?w=600&q=80",  label: "Interior · Veo 2", tag: "VIDEO" },
+  { img: "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=600&q=80",  label: "Pet · PixVerse", tag: "VIDEO" },
+];
+
 // ------------------------- Sub-components ------------------------------
 
 const useSpotlight = () => {
@@ -146,13 +169,23 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Floating preview cards */}
-          <div className="relative mx-auto max-w-5xl h-[440px] md:h-[500px] fade-in" style={{ animationDelay: "0.5s" }}>
-            <FloatingCard img={HERO_MEDIA.villa}   label="Real Estate · Veo 3.1" className="left-[5%]  top-[5%]  w-[42%]  h-[42%] rotate-[-6deg] animate-float-slow" />
-            <FloatingCard img={HERO_MEDIA.woman}   label="Portrait · FLUX Ultra" className="right-[5%] top-[0%]  w-[38%]  h-[46%] rotate-[4deg]  animate-float-medium" />
-            <FloatingCard img={HERO_MEDIA.city}    label="Sora 2 · Video"        className="left-[25%] bottom-[8%] w-[44%] h-[46%] rotate-[3deg]  animate-float-slow" isVideo />
-            <FloatingCard img={HERO_MEDIA.perfume} label="Product · GPT Image 2" className="right-[8%] bottom-[6%] w-[32%] h-[42%] rotate-[-3deg] animate-float-medium" />
-            <FloatingCard img={HERO_MEDIA.neon}    label="Character · Ideogram"  className="left-[38%] top-[35%] w-[26%] h-[30%] rotate-[8deg]  tilt-idle" small />
+          {/* Premium 3-column showcase marquee */}
+          <div className="relative mx-auto max-w-6xl mt-4 fade-in" style={{ animationDelay: "0.5s" }}>
+            <div className="grid grid-cols-3 gap-4 md:gap-5 h-[540px] md:h-[620px] overflow-hidden mask-fade-y">
+              <ShowcaseColumn direction="up"   items={SHOWCASE_COL_1} />
+              <ShowcaseColumn direction="down" items={SHOWCASE_COL_2} />
+              <ShowcaseColumn direction="up"   items={SHOWCASE_COL_3} />
+            </div>
+            {/* Center CTA overlay chip */}
+            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center pointer-events-none">
+              <div className="pointer-events-auto pill bg-black/70 backdrop-blur-md border-white/20 !py-2 !px-4 font-mono text-[11px] uppercase tracking-widest">
+                <span className="text-[#c084fc]">30 models</span>
+                <span className="mx-2 text-white/40">·</span>
+                <span className="text-emerald-400">1 credit balance</span>
+                <span className="mx-2 text-white/40">·</span>
+                <span className="text-white/80">Live</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -427,6 +460,29 @@ function FloatingCard({ img, label, className = "", small = false, isVideo = fal
       {!small && (
         <div className="absolute bottom-3 left-3 pill !py-0.5 !px-2 text-[10px]">{label}</div>
       )}
+    </div>
+  );
+}
+
+function ShowcaseColumn({ items, direction = "up" }) {
+  const loop = [...items, ...items];
+  const cls = direction === "up" ? "hero-scroll-up" : "hero-scroll-down";
+  return (
+    <div className="relative overflow-hidden">
+      <div className={`flex flex-col gap-4 md:gap-5 ${cls}`}>
+        {loop.map((it, i) => (
+          <div key={i} className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/[0.08] shadow-[0_20px_60px_-15px_rgba(168,85,247,0.35)] group">
+            <img src={it.img} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
+            <div className="absolute top-2 right-2">
+              <span className={`pill !py-0.5 !px-1.5 text-[9px] font-mono ${it.tag === "VIDEO" ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300" : "border-[#a855f7]/40 bg-[#a855f7]/10 text-[#c084fc]"}`}>
+                {it.tag}
+              </span>
+            </div>
+            <div className="absolute bottom-2 left-2 right-2 text-[10px] font-mono text-white/90 truncate">{it.label}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

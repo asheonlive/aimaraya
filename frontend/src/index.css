@@ -209,6 +209,21 @@ body {
 }
 .marquee-rev { animation: marquee-rev 60s linear infinite; }
 
+@keyframes hero-scroll-up {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+@keyframes hero-scroll-down {
+  0% { transform: translateY(-50%); }
+  100% { transform: translateY(0); }
+}
+.hero-scroll-up   { animation: hero-scroll-up   40s linear infinite; }
+.hero-scroll-down { animation: hero-scroll-down 40s linear infinite; }
+.mask-fade-y {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+}
+
 @keyframes rotate-3d {
   0% { transform: perspective(1200px) rotateY(-10deg) rotateX(4deg); }
   50% { transform: perspective(1200px) rotateY(10deg) rotateX(-4deg); }
