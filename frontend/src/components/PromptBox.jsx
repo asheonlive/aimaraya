@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import CharactersModal from "@/components/CharactersModal";
 import {
   Plus, X, Image as ImageIcon, Video, Music, Copy,
-  Users, Clock, Maximize2,
+  Users, Clock, Maximize2, Sparkles,
 } from "lucide-react";
 
 const MODEL_SUPPORTS_IMAGE_REF = ["flux-kontext-pro", "flux-kontext-max", "flux-1.1-ultra", "flux-2-pro"];
@@ -27,6 +27,8 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
   const [cameraCtrl, setCameraCtrl] = useState("");
   const [character, setCharacter] = useState(null);
   const [charsOpen, setCharsOpen] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const timerRef = useRef(null);
   const imgFileRef = useRef(null);
   const startFileRef = useRef(null);
   const endFileRef = useRef(null);
@@ -71,9 +73,22 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
     catch (err) { toast.error(err.response?.data?.detail || "Upload failed"); }
   };
 
+  useEffect(() => {
+    if (loading) {
+      setElapsed(0);
+      const start = Date.now();
+      timerRef.current = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 200);
+    } else {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    return () => clearInterval(timerRef.current);
+  }, [loading]);
+
   const handleGenerate = async () => {
     if (!prompt.trim()) return toast.error("Enter a prompt first");
     if (!selected) return toast.error("Pick a model");
+    setElapsed(0);
     setLoading(true); onGenerating?.(true);
     try {
       const body = {
@@ -233,6 +248,25 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
       </div>
     </div>
     <CharactersModal open={charsOpen} onClose={() => setCharsOpen(false)} onPick={setCharacter} />
+    {loading && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+        <div className="relative flex flex-col items-center gap-4 p-10">
+          <div className="relative">
+            <div className="w-20 h-20 rounded-full gradient-purple animate-ping opacity-40 absolute inset-0" />
+            <div className="w-20 h-20 rounded-full border-2 border-[#a855f7]/30 animate-spin absolute inset-0 border-t-[#a855f7]" />
+            <div className="w-20 h-20 rounded-full bg-[#0d0919] flex items-center justify-center relative z-10">
+              <Sparkles className="w-8 h-8 text-[#c084fc] animate-pulse" />
+            </div>
+          </div>
+          <div className="text-center">
+            <p className="text-white font-medium text-lg">Generating with {selected?.name}</p>
+            <p className="text-[#a89dc9] text-sm mt-1">
+              {elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`}
+            </p>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }
