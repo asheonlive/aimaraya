@@ -125,23 +125,23 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
       <div className="relative flex flex-col">
         {mode === "video" && (
           <div className="flex flex-col sm:flex-row rounded-2xl sm:rounded-t-2xl sm:rounded-b-none overflow-hidden">
+            {hasImageRef && (
+              <RefSlot icon={ImageIcon} label="Image Ref" limit="0/9" hint="Upload images"
+                preview={refImage?.preview} onPick={() => imgFileRef.current?.click()}
+                onClear={() => setRefImage(null)} />
+            )}
             {hasStartFrame && (
+              <>{hasImageRef && <div className="hidden sm:block w-[1px] bg-white/10" />}
               <RefSlot icon={ImageIcon} label="Start Frame" limit="0/1" hint="First frame"
                 preview={startFrame?.preview} onPick={() => startFileRef.current?.click()}
                 onClear={() => setStartFrame(null)} />
+              </>
             )}
             {hasEndFrame && (
-              <>{hasStartFrame && <div className="hidden sm:block w-[1px] bg-white/10" />}
+              <>{<div className="hidden sm:block w-[1px] bg-white/10" />}
               <RefSlot icon={ImageIcon} label="End Frame" limit="0/1" hint="Last frame"
                 preview={endFrame?.preview} onPick={() => endFileRef.current?.click()}
                 onClear={() => setEndFrame(null)} />
-              </>
-            )}
-            {hasImageRef && !hasStartFrame && !hasEndFrame && (
-              <>
-                <RefSlot icon={ImageIcon} label="Image Ref" limit="0/9" hint="Upload images"
-                  preview={refImage?.preview} onPick={() => imgFileRef.current?.click()}
-                  onClear={() => setRefImage(null)} />
               </>
             )}
           </div>
@@ -152,7 +152,7 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
 
         <div className={`glass ring-1 ring-[#a855f7] p-3 sm:p-4 ${mode === "video" ? "rounded-b-2xl rounded-t-none border-t-0" : "rounded-2xl"}`}>
           <div className="flex gap-3">
-            {mode === "image" && (
+            {mode === "image" && hasImageRef && (
               <div className="flex flex-col gap-1.5">
                 {refImage ? (
                   <div className="relative">
