@@ -66,27 +66,28 @@ const SEEDANCE_SHOWCASE = [
 ];
 
 // ------------------------- Hero showcase columns -----------------------
-// Verified Unsplash IDs. Distinctive labels/tags evoke AI-generated aesthetic.
+// Real AI-generated visuals hotlinked from partner CDN.
+const _OA = "https://cdn.openart.ai/assets/internal/uploads/";
 const SHOWCASE_COL_1 = [
-  { img: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=600&q=80&auto=format&fit=crop", label: "Sunset Villa · Veo 3.1",    tag: "VIDEO" },
-  { img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&q=80&auto=format&fit=crop",   label: "Editorial · FLUX Kontext",  tag: "IMAGE" },
-  { img: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&q=80&auto=format&fit=crop", label: "Neo-Tokyo · Sora 2",       tag: "VIDEO" },
-  { img: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=600&q=80&auto=format&fit=crop", label: "Neon Portrait · Ideogram", tag: "IMAGE" },
-  { img: "https://images.unsplash.com/photo-1541643600914-78b084683601?w=600&q=80&auto=format&fit=crop", label: "Perfume · GPT Image",      tag: "IMAGE" },
+  { img: `${_OA}image_CsJ_IqM2_600x800_1781682208175.webp`, label: "Seedance 2.0 · Cinematic",  tag: "VIDEO" },
+  { img: `${_OA}image_A8jQyhZR_600x800_1781788985091.webp`, label: "Nano Banana Pro",           tag: "IMAGE" },
+  { img: `${_OA}image_ABYKHNYZ_600x800_1781682207796.webp`, label: "FLUX 1.1 Ultra",            tag: "IMAGE" },
+  { img: `${_OA}image_HZ6dgVCt_600x800_1781682208120.webp`, label: "Lip-Sync · Kling",          tag: "VIDEO" },
+  { img: `${_OA}image_i0lJBBxR_512x512_1774499262487.webp`, label: "Character · GPT Image",     tag: "IMAGE" },
 ];
 const SHOWCASE_COL_2 = [
-  { img: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600&q=80&auto=format&fit=crop", label: "Chrome Drive · Seedance Pro", tag: "VIDEO" },
-  { img: "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=600&q=80&auto=format&fit=crop", label: "Red Dunes · Kling Omni",     tag: "VIDEO" },
-  { img: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&q=80&auto=format&fit=crop", label: "Michelin Plate · Grok",      tag: "VIDEO" },
-  { img: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&q=80&auto=format&fit=crop", label: "Alpine · Luma Ray",          tag: "VIDEO" },
-  { img: "https://images.unsplash.com/photo-1493666438817-866a91353ca9?w=600&q=80&auto=format&fit=crop", label: "Interior · Veo 2",           tag: "VIDEO" },
+  { img: `${_OA}image_g_OTQ1Fw_600x800_1781682207947.webp`, label: "Kling 3.0 Omni",            tag: "VIDEO" },
+  { img: `${_OA}image_iLDTHFIk_720x402_1782316634275.webp`, label: "Gemini Omni",               tag: "IMAGE" },
+  { img: `${_OA}image_2olSwhi1_600x800_1781682207920.webp`, label: "Nano Banana · Portrait",    tag: "IMAGE" },
+  { img: `${_OA}image_8MO2Ayl8_1920x1080_1781498671823.webp`, label: "Sora 2 · Cinematic",      tag: "VIDEO" },
+  { img: `${_OA}image_iUYIDfuf_600x800_1781682207800.webp`, label: "Ideogram V4",               tag: "IMAGE" },
 ];
 const SHOWCASE_COL_3 = [
-  { img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&q=80&auto=format&fit=crop", label: "Character · FLUX 1.1",       tag: "IMAGE" },
-  { img: "https://images.unsplash.com/photo-1533450718592-29d45635f0a9?w=600&q=80&auto=format&fit=crop", label: "Sneaker · Recraft V4",       tag: "IMAGE" },
-  { img: "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=600&q=80&auto=format&fit=crop", label: "Pet · PixVerse",             tag: "VIDEO" },
-  { img: "https://images.unsplash.com/photo-1550684376-efcbd6e3f031?w=600&q=80&auto=format&fit=crop",   label: "Iridescent · Seedream",      tag: "IMAGE" },
-  { img: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&q=80&auto=format&fit=crop", label: "Runway · Stability Ultra",   tag: "IMAGE" },
+  { img: `${_OA}image_vkP7sut3_600x800_1781682207959.webp`, label: "Motion Sync",               tag: "VIDEO" },
+  { img: `${_OA}image_6FXfp8W__600x800_1781682207739.webp`, label: "Recraft V4 · Design",       tag: "IMAGE" },
+  { img: `${_OA}image_GfcFA9_m_1008x1008_1771461069379.webp`, label: "Stability Ultra",         tag: "IMAGE" },
+  { img: `${_OA}image_Tuv4xeLU_1024x576_1782833157395.webp`, label: "Veo 3.1 · Fast",           tag: "VIDEO" },
+  { img: `${_OA}image_joPwIneD_512x512_1774499266254.webp`, label: "Grok Imagine",              tag: "IMAGE" },
 ];
 
 // ------------------------- Use-case grid (Vibe Direct-style) -----------
