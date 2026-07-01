@@ -2,22 +2,28 @@ import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth";
-import Navbar from "@/components/Navbar";
+import PublicNav from "@/components/PublicNav";
 import Footer from "@/components/Footer";
+import AppShell from "@/components/AppShell";
 import Landing from "@/pages/Landing";
-import Models from "@/pages/Models";
-import Studio from "@/pages/Studio";
-import Dashboard from "@/pages/Dashboard";
-import Pricing from "@/pages/Pricing";
 import Auth from "@/pages/Auth";
 import Success from "@/pages/Success";
+import Pricing from "@/pages/Pricing";
 import Explore from "@/pages/Explore";
+import Templates from "@/pages/Templates";
+import Dashboard from "@/pages/Dashboard";
+import Studio from "@/pages/Studio";
+import VideoStudio from "@/pages/VideoStudio";
+import Assets from "@/pages/Assets";
+import Models from "@/pages/Models";
+import Settings from "@/pages/Settings";
 import "@/App.css";
 
-function Shell({ children, hideFooter }) {
+/** Public marketing shell (top nav + footer) */
+function PublicShell({ children, hideFooter }) {
   return (
-    <div className="min-h-screen flex flex-col bg-[#050505] text-[#f4f4f5] grain">
-      <Navbar />
+    <div className="min-h-screen flex flex-col bg-[#07050f] text-[#f5f3ff] grain">
+      <PublicNav />
       <main className="flex-1 relative z-10">{children}</main>
       {!hideFooter && <Footer />}
     </div>
@@ -28,16 +34,30 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Toaster theme="dark" position="top-right" />
+        <Toaster theme="dark" position="top-right" toastOptions={{
+          style: { background: "#1a1530", border: "1px solid #2a2340", color: "#f5f3ff" }
+        }} />
         <Routes>
-          <Route path="/" element={<Shell><Landing /></Shell>} />
-          <Route path="/models" element={<Shell><Models /></Shell>} />
-          <Route path="/explore" element={<Shell><Explore /></Shell>} />
-          <Route path="/studio" element={<Shell hideFooter><Studio /></Shell>} />
-          <Route path="/dashboard" element={<Shell><Dashboard /></Shell>} />
-          <Route path="/pricing" element={<Shell><Pricing /></Shell>} />
-          <Route path="/auth" element={<Shell><Auth /></Shell>} />
-          <Route path="/success" element={<Shell><Success /></Shell>} />
+          {/* Public */}
+          <Route path="/" element={<PublicShell><Landing /></PublicShell>} />
+          <Route path="/pricing" element={<PublicShell><Pricing /></PublicShell>} />
+          <Route path="/models" element={<PublicShell><Models /></PublicShell>} />
+          <Route path="/explore" element={<PublicShell><Explore /></PublicShell>} />
+          <Route path="/auth" element={<PublicShell><Auth /></PublicShell>} />
+          <Route path="/success" element={<PublicShell><Success /></PublicShell>} />
+
+          {/* App (sidebar shell) */}
+          <Route path="/app" element={<AppShell />}>
+            <Route index element={<Dashboard />} />
+            <Route path="create" element={<Studio />} />
+            <Route path="image-studio" element={<Studio />} />
+            <Route path="video-studio" element={<VideoStudio />} />
+            <Route path="templates" element={<Templates />} />
+            <Route path="generations" element={<Assets />} />
+            <Route path="assets" element={<Assets />} />
+            <Route path="explore" element={<Explore />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
         </Routes>
       </BrowserRouter>
     </AuthProvider>

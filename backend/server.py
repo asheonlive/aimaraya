@@ -84,9 +84,9 @@ class CheckoutReq(BaseModel):
     origin_url: str
 
 PACKAGES = {
-    "starter": {"name": "Starter", "amount": 9.00, "currency": "usd", "credits": 100},
-    "pro":     {"name": "Pro",     "amount": 29.00, "currency": "usd", "credits": 500},
-    "premium": {"name": "Premium", "amount": 99.00, "currency": "usd", "credits": 2000},
+    "starter": {"name": "Starter", "amount": 12.00, "currency": "usd", "credits": 3000},
+    "pro":     {"name": "Pro",     "amount": 29.00, "currency": "usd", "credits": 10000},
+    "ultra":   {"name": "Ultra",   "amount": 59.00, "currency": "usd", "credits": 30000},
 }
 
 # ---------- Auth helpers ----------
@@ -197,7 +197,7 @@ async def register(req: RegisterReq):
         "id": user_id, "email": req.email.lower(),
         "name": req.name or req.email.split("@")[0],
         "password": hash_pw(req.password),
-        "credits": 20,
+        "credits": 100,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.users.insert_one(doc)
