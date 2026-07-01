@@ -26,6 +26,14 @@ export default function PromptBox({ mode = "image", onResult, defaultModel }) {
   useEffect(() => { api.get("/models").then(r => setModels(r.data.models || [])); }, []);
   const filteredModels = models.filter(m => m.type === mode && m.available);
   const selected = models.find(m => m.id === modelId) || filteredModels[0];
+  // Kling & Seedance are limited to 480p/720p; other video models keep 720p/1080p.
+  const isKlingOrSeedance = selected && /^(kling|seedance)/i.test(selected.id);
+  const videoResolutions = isKlingOrSeedance ? ["480p", "720p"] : ["720p", "1080p"];
+  useEffect(() => {
+    if (mode === "video" && !videoResolutions.includes(resolution)) {
+      setResolution(videoResolutions[videoResolutions.length - 1]);
+    }
+  }, [modelId, mode]);
   const cost = (selected?.credits || 0) * count * (mode === "video" ? parseInt(duration) || 1 : 1);
 
   const handleGenerate = async () => {
@@ -94,7 +102,7 @@ export default function PromptBox({ mode = "image", onResult, defaultModel }) {
               </Pill>
               <Pill>
                 <select value={resolution} onChange={(e) => setResolution(e.target.value)} className="bg-transparent outline-none text-sm">
-                  {(mode === "video" ? ["720p","1080p"] : ["1K","2K","4K"]).map(r => <option key={r} value={r} className="bg-[#0d0919]">{r}</option>)}
+                  {(mode === "video" ? videoResolutions : ["1K","2K","4K"]).map(r => <option key={r} value={r} className="bg-[#0d0919]">{r}</option>)}
                 </select>
               </Pill>
               {mode === "video" && (
