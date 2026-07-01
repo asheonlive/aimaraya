@@ -66,26 +66,27 @@ const SEEDANCE_SHOWCASE = [
 ];
 
 // ------------------------- Hero showcase columns -----------------------
+// Verified Unsplash IDs. Distinctive labels/tags evoke AI-generated aesthetic.
 const SHOWCASE_COL_1 = [
-  { img: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=600&q=80", label: "Villa · Veo 3.1", tag: "VIDEO" },
-  { img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&q=80",     label: "Portrait · FLUX 1.1", tag: "IMAGE" },
-  { img: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600&q=80",  label: "Auto · Seedance Pro", tag: "VIDEO" },
-  { img: "https://images.unsplash.com/photo-1541643600914-78b084683601?w=600&q=80",  label: "Perfume · GPT Image", tag: "IMAGE" },
-  { img: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=600&q=80",  label: "Neon · Ideogram V4", tag: "IMAGE" },
+  { img: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=600&q=80&auto=format&fit=crop", label: "Sunset Villa · Veo 3.1",    tag: "VIDEO" },
+  { img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&q=80&auto=format&fit=crop",   label: "Editorial · FLUX Kontext",  tag: "IMAGE" },
+  { img: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&q=80&auto=format&fit=crop", label: "Neo-Tokyo · Sora 2",       tag: "VIDEO" },
+  { img: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=600&q=80&auto=format&fit=crop", label: "Neon Portrait · Ideogram", tag: "IMAGE" },
+  { img: "https://images.unsplash.com/photo-1541643600914-78b084683601?w=600&q=80&auto=format&fit=crop", label: "Perfume · GPT Image",      tag: "IMAGE" },
 ];
 const SHOWCASE_COL_2 = [
-  { img: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&q=80", label: "City · Sora 2", tag: "VIDEO" },
-  { img: "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=600&q=80",  label: "Desert · Kling Omni", tag: "VIDEO" },
-  { img: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&q=80",  label: "Chef · Grok Imagine", tag: "VIDEO" },
-  { img: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&q=80",  label: "Landscape · Luma", tag: "VIDEO" },
-  { img: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&q=80",  label: "Fashion · Recraft V4", tag: "IMAGE" },
+  { img: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600&q=80&auto=format&fit=crop", label: "Chrome Drive · Seedance Pro", tag: "VIDEO" },
+  { img: "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=600&q=80&auto=format&fit=crop", label: "Red Dunes · Kling Omni",     tag: "VIDEO" },
+  { img: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&q=80&auto=format&fit=crop", label: "Michelin Plate · Grok",      tag: "VIDEO" },
+  { img: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&q=80&auto=format&fit=crop", label: "Alpine · Luma Ray",          tag: "VIDEO" },
+  { img: "https://images.unsplash.com/photo-1493666438817-866a91353ca9?w=600&q=80&auto=format&fit=crop", label: "Interior · Veo 2",           tag: "VIDEO" },
 ];
 const SHOWCASE_COL_3 = [
-  { img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&q=80",  label: "Model · FLUX Kontext", tag: "IMAGE" },
-  { img: "https://images.unsplash.com/photo-1602934585418-f588bea4215c?w=600&q=80",  label: "Cosmic · Stability", tag: "IMAGE" },
-  { img: "https://images.unsplash.com/photo-1533450718592-29d45635f0a9?w=600&q=80",  label: "Sneaker · Seedream", tag: "IMAGE" },
-  { img: "https://images.unsplash.com/photo-1493666438817-866a91353ca9?w=600&q=80",  label: "Interior · Veo 2", tag: "VIDEO" },
-  { img: "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=600&q=80",  label: "Pet · PixVerse", tag: "VIDEO" },
+  { img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&q=80&auto=format&fit=crop", label: "Character · FLUX 1.1",       tag: "IMAGE" },
+  { img: "https://images.unsplash.com/photo-1533450718592-29d45635f0a9?w=600&q=80&auto=format&fit=crop", label: "Sneaker · Recraft V4",       tag: "IMAGE" },
+  { img: "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=600&q=80&auto=format&fit=crop", label: "Pet · PixVerse",             tag: "VIDEO" },
+  { img: "https://images.unsplash.com/photo-1550684376-efcbd6e3f031?w=600&q=80&auto=format&fit=crop",   label: "Iridescent · Seedream",      tag: "IMAGE" },
+  { img: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&q=80&auto=format&fit=crop", label: "Runway · Stability Ultra",   tag: "IMAGE" },
 ];
 
 // ------------------------- Sub-components ------------------------------
