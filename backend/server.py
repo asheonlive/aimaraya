@@ -31,6 +31,7 @@ from models_catalog import (
 )
 from comfy_cloud_client import ComfyCloudClient, ComfyCloudError, collect_output_files
 from artcraft_client import ArtCraftClient, ArtCraftError, ArtCraftPool
+from artlist_client import test_login as artlist_test_login
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -335,6 +336,40 @@ async def _generate_artcraft(
 @api.get("/")
 async def root():
     return {"status": "ok", "service": "Maraya AI", "artcraft": artcraft_pool.summary()}
+
+
+# --- Artlist.io login probe (Playwright) ---
+@api.post("/artlist/test-login")
+async def artlist_login_probe(x_debug_token: Optional[str] = Header(None)):
+    """Headless Playwright probe against https://artlist.io/login.
+
+    Uses ARTLIST_EMAIL / ARTLIST_PASSWORD from backend env.
+
+    Optional: send header `X-Debug-Token: <value>` matching env
+    `ARTLIST_DEBUG_TOKEN` to receive a screenshot URL for debugging.
+    Without a valid debug token, no screenshot is captured.
+    """
+    debug_token = os.environ.get("ARTLIST_DEBUG_TOKEN", "").strip()
+    include_screenshot = bool(debug_token and x_debug_token == debug_token)
+
+    screenshot_path: Optional[str] = None
+    if include_screenshot:
+        fname = f"artlist_login_{uuid.uuid4().hex[:8]}.png"
+        screenshot_path = str(GENERATED_DIR / fname)
+
+    result = await artlist_test_login(
+        email=os.environ.get("ARTLIST_EMAIL"),
+        password=os.environ.get("ARTLIST_PASSWORD"),
+        headless=True,
+        screenshot_path=screenshot_path,
+    )
+    payload = result.to_dict()
+    if include_screenshot and result.screenshot_path:
+        payload["screenshot_url"] = f"/api/media/{Path(result.screenshot_path).name}"
+    else:
+        payload.pop("screenshot_path", None)
+    payload["email"] = os.environ.get("ARTLIST_EMAIL", "")
+    return payload
 
 @api.get("/models")
 async def get_models():
