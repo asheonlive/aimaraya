@@ -33,14 +33,21 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
   const startFileRef = useRef(null);
   const endFileRef = useRef(null);
 
-  useEffect(() => { api.get("/models").then(r => setModels(r.data.models || [])); }, []);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  useEffect(() => { api.get("/models").then(r => { setModels(r.data.models || []); setModelsLoaded(true); }); }, []);
 
   const filteredModels = models.filter(m => m.type === mode && m.available);
-  const selected = models.find(m => m.id === modelId) || filteredModels[0];
-  const isKlingSeedance = selected && /^(kling|seedance)/i.test(selected.id);
-  const videoResolutions = isKlingSeedance ? ["480p", "720p"] : ["720p", "1080p"];
   useEffect(() => {
-    if (mode === "video" && !videoResolutions.includes(resolution)) {
+    const ids = filteredModels.map(m => m.id);
+    if (modelId && !ids.includes(modelId) && ids.length) setModelId(ids[0]);
+  }, [mode, models.length]);
+  const selected = models.find(m => m.id === modelId) || null;
+  const isKlingSeedance = selected && /^(kling|seedance)/i.test(selected.id);
+  const videoResolutions = isKlingSeedance ? (selected?.resolutions?.length ? selected.resolutions : ["480p", "720p"]) : ["720p", "1080p"];
+  const videoDurations = selected?.durations?.length ? selected.durations : ["5s", "8s", "10s", "12s"];
+  const imageResolutions = selected?.resolutions?.length ? selected.resolutions : ["1K", "2K", "4K"];
+  useEffect(() => {
+    if (mode === "video" && !videoResolutions.includes(resolution) && videoResolutions.length) {
       setResolution(videoResolutions[videoResolutions.length - 1]);
     }
   }, [modelId, mode]);
@@ -194,7 +201,7 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
               </Pill>
               <Pill>
                 <select value={resolution} onChange={(e) => setResolution(e.target.value)} className="bg-transparent outline-none text-sm">
-                  {(mode === "video" ? videoResolutions : ["1K","2K","4K"]).map(r => <option key={r} value={r} className="bg-[#0d0919]">{r}</option>)}
+                  {(mode === "video" ? videoResolutions : imageResolutions).map(r => <option key={r} value={r} className="bg-[#0d0919]">{r}</option>)}
                 </select>
               </Pill>
               {mode === "video" && (
@@ -207,7 +214,7 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
                   <Pill>
                     <Clock className="w-3.5 h-3.5" />
                     <select value={duration} onChange={(e) => setDuration(e.target.value)} className="bg-transparent outline-none text-sm">
-                      {["5s","8s","10s","12s"].map(d => <option key={d} value={d} className="bg-[#0d0919]">{d}</option>)}
+                      {videoDurations.map(d => <option key={d} value={d} className="bg-[#0d0919]">{d}</option>)}
                     </select>
                   </Pill>
                 </>
@@ -248,7 +255,7 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
       </div>
     </div>
     <CharactersModal open={charsOpen} onClose={() => setCharsOpen(false)} onPick={setCharacter} />
-    {loading && (
+    {loading && modelsLoaded && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
         <div className="relative flex flex-col items-center gap-4 p-10">
           <div className="relative">
@@ -259,7 +266,7 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
             </div>
           </div>
           <div className="text-center">
-            <p className="text-white font-medium text-lg">Generating with {selected?.name}</p>
+            <p className="text-white font-medium text-lg">Generating with {selected?.name || mode === "video" ? "AI MARAYA" : "AI MARAYA"}</p>
             <p className="text-[#a89dc9] text-sm mt-1">
               {elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`}
             </p>
