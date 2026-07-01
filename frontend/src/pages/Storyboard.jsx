@@ -111,7 +111,7 @@ export default function Storyboard() {
             placeholder="Describe your story or scene..."
           />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-xs uppercase tracking-[0.2em] text-[#a89dc9] mb-2 block">Panels</label>
             <div className="flex gap-1">
@@ -130,12 +130,6 @@ export default function Storyboard() {
             <label className="text-xs uppercase tracking-[0.2em] text-[#a89dc9] mb-2 block">Image Model</label>
             <select value={imageModel} onChange={(e) => setImageModel(e.target.value)} data-testid="story-imagemodel" className="w-full bg-[#0d0919] border border-[#2a2340] rounded-lg px-3 py-2.5 text-sm">
               {IMAGE_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-[#a89dc9] mb-2 block">Animate with</label>
-            <select value={videoModel} onChange={(e) => setVideoModel(e.target.value)} data-testid="story-videomodel" className="w-full bg-[#0d0919] border border-[#2a2340] rounded-lg px-3 py-2.5 text-sm">
-              {VIDEO_MODELS.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
             </select>
           </div>
         </div>
