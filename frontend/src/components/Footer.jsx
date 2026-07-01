@@ -28,11 +28,11 @@ export default function Footer() {
         </div>
         <div>
           <h4 className="text-xs uppercase tracking-[0.2em] text-[#a89dc9] mb-4">Company</h4>
-          <ul className="space-y-2 text-sm text-[#a89dc9]">
-            <li>About</li>
-            <li>Privacy</li>
-            <li>Terms</li>
-            <li>Contact</li>
+          <ul className="space-y-2 text-sm">
+            <li><Link to="/about" data-testid="footer-about" className="hover:text-[#c084fc] text-[#a89dc9]">About</Link></li>
+            <li><Link to="/privacy" data-testid="footer-privacy" className="hover:text-[#c084fc] text-[#a89dc9]">Privacy</Link></li>
+            <li><Link to="/terms" data-testid="footer-terms" className="hover:text-[#c084fc] text-[#a89dc9]">Terms</Link></li>
+            <li><Link to="/contact" data-testid="footer-contact" className="hover:text-[#c084fc] text-[#a89dc9]">Contact</Link></li>
           </ul>
         </div>
       </div>

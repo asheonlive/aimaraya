@@ -18,6 +18,11 @@ import Assets from "@/pages/Assets";
 import Models from "@/pages/Models";
 import Settings from "@/pages/Settings";
 import ComingSoon from "@/pages/ComingSoon";
+import Storyboard from "@/pages/Storyboard";
+import About from "@/pages/About";
+import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
+import Contact from "@/pages/Contact";
 import "@/App.css";
 
 function PublicShell({ children, hideFooter }) {
@@ -45,6 +50,10 @@ export default function App() {
           <Route path="/explore" element={<PublicShell><Explore /></PublicShell>} />
           <Route path="/auth" element={<PublicShell><Auth /></PublicShell>} />
           <Route path="/success" element={<PublicShell><Success /></PublicShell>} />
+          <Route path="/about" element={<PublicShell><About /></PublicShell>} />
+          <Route path="/privacy" element={<PublicShell><Privacy /></PublicShell>} />
+          <Route path="/terms" element={<PublicShell><Terms /></PublicShell>} />
+          <Route path="/contact" element={<PublicShell><Contact /></PublicShell>} />
 
           {/* App */}
           <Route path="/app" element={<AppShell />}>

@@ -41,7 +41,10 @@ def _save_video(src: str = "1") -> dict:
                        "format": "mp4", "codec": "h264"}}
 
 
-def build_comfy_workflow(model: dict, prompt: str, aspect_ratio: str = "16:9") -> dict:
+def build_comfy_workflow(model: dict, prompt: str, aspect_ratio: str = "16:9",
+                          extra_inputs: dict | None = None) -> dict:
+    """Build a 2-node workflow. `extra_inputs` overlays raw values into the
+    partner-node inputs (used for start_frame/end_frame node refs, camera_control, etc)."""
     inputs: dict[str, Any] = deepcopy(model.get("base_inputs") or {})
     prompt_field = model.get("prompt_field", "prompt")
     inputs[prompt_field] = prompt
@@ -51,9 +54,11 @@ def build_comfy_workflow(model: dict, prompt: str, aspect_ratio: str = "16:9") -
     else:
         aspect_field = model.get("aspect_field", "aspect_ratio")
         if aspect_field and aspect_ratio:
-            # Only set if node declares this field
             if aspect_field in inputs or "aspect_ratio" in (model.get("base_inputs") or {}):
                 inputs[aspect_field] = aspect_ratio
+
+    if extra_inputs:
+        inputs.update(extra_inputs)
 
     wf: dict[str, Any] = {"1": {"class_type": model["node_class"], "inputs": inputs}}
     wf["2"] = _save_image("1") if model.get("output_kind", model["type"]) == "image" else _save_video("1")
@@ -64,7 +69,7 @@ def build_comfy_workflow(model: dict, prompt: str, aspect_ratio: str = "16:9") -
 MODELS: list[dict[str, Any]] = [
     # --------------------------- IMAGE / Comfy ----------------------------
     {"id": "flux-1.1-ultra", "name": "FLUX 1.1 Ultra", "type": "image",
-     "category": "Cinematic", "credits": 4, "available": True,
+     "category": "Cinematic", "credits": 3, "available": True,
      "tagline": "Black Forest Labs flagship · maximum quality",
      "engine_type": "comfy", "node_class": "FluxProUltraImageNode",
      "base_inputs": {"prompt_upsampling": False, "seed": 0, "aspect_ratio": "1:1",
@@ -76,7 +81,7 @@ MODELS: list[dict[str, Any]] = [
      "base_inputs": {"aspect_ratio": "1:1", "guidance": 3.5, "steps": 30,
                      "seed": 0, "prompt_upsampling": False}},
     {"id": "flux-kontext-max", "name": "FLUX Kontext Max", "type": "image",
-     "category": "Editorial", "credits": 4, "available": True,
+     "category": "Editorial", "credits": 5, "available": True,
      "tagline": "Highest-fidelity FLUX Kontext",
      "engine_type": "comfy", "node_class": "FluxKontextMaxImageNode",
      "base_inputs": {"aspect_ratio": "1:1", "guidance": 3.5, "steps": 40,
@@ -88,11 +93,18 @@ MODELS: list[dict[str, Any]] = [
      "base_inputs": {"width": 1024, "height": 1024, "seed": 0, "prompt_upsampling": False},
      "aspect_field": None},
     {"id": "gpt-image-1", "name": "GPT Image 1", "type": "image",
-     "category": "Realistic", "credits": 3, "available": True,
+     "category": "Realistic", "credits": 5, "available": True,
      "tagline": "OpenAI's flagship image model",
      "engine_type": "comfy", "node_class": "OpenAIGPTImage1",
      "base_inputs": {"seed": 0, "quality": "high", "background": "auto",
                      "size": "1024x1024", "n": 1},
+     "aspect_field": None},
+    {"id": "gpt-image-2", "name": "GPT Image 2", "type": "image",
+     "category": "Storyboard", "credits": 6, "available": True,
+     "tagline": "OpenAI's latest image model — perfect for storyboards",
+     "engine_type": "comfy", "node_class": "OpenAIGPTImageNodeV2",
+     "base_inputs": {"model": "gpt-image-2", "size": "1024x1024",
+                     "background": "auto", "n": 1, "seed": 0},
      "aspect_field": None},
     {"id": "ideogram-v4", "name": "Ideogram V4", "type": "image",
      "category": "Typography", "credits": 3, "available": True,
@@ -119,24 +131,24 @@ MODELS: list[dict[str, Any]] = [
      "base_inputs": {"model": "grok-imagine-image-pro", "aspect_ratio": "1:1",
                      "number_of_images": 1, "seed": 0, "resolution": "2K"}},
     {"id": "stability-ultra", "name": "Stable Image Ultra", "type": "image",
-     "category": "Photographic", "credits": 3, "available": True,
+     "category": "Photographic", "credits": 4, "available": True,
      "tagline": "Stability AI flagship",
      "engine_type": "comfy", "node_class": "StabilityStableImageUltraNode",
      "base_inputs": {"aspect_ratio": "1:1", "style_preset": "photographic", "seed": 0}},
 
     # --------------------------- VIDEO / Comfy ----------------------------
     {"id": "sora-2", "name": "Sora 2", "type": "video", "category": "Cinematic",
-     "credits": 12, "available": True, "tagline": "OpenAI cinematic video · 8s",
+     "credits": 15, "available": True, "tagline": "OpenAI cinematic video · 8s",
      "engine_type": "comfy", "node_class": "OpenAIVideoSora2",
      "base_inputs": {"model": "sora-2", "duration": 8, "seed": 0},
      "size_map": SORA_SIZE_MAP},
     {"id": "sora-2-pro", "name": "Sora 2 Pro", "type": "video", "category": "Cinematic",
-     "credits": 18, "available": True, "tagline": "Premium realistic Sora · 8s",
+     "credits": 25, "available": True, "tagline": "Premium realistic Sora · 8s",
      "engine_type": "comfy", "node_class": "OpenAIVideoSora2",
      "base_inputs": {"model": "sora-2-pro", "duration": 8, "seed": 0},
      "size_map": SORA_SIZE_MAP},
     {"id": "veo-3.1-fast", "name": "Veo 3.1 Fast", "type": "video",
-     "category": "High-Fidelity", "credits": 11, "available": True,
+     "category": "High-Fidelity", "credits": 15, "available": True,
      "tagline": "Google Veo 3.1 · 720p · 8s",
      "engine_type": "comfy", "node_class": "Veo3VideoGenerationNode",
      "base_inputs": {"aspect_ratio": "16:9", "resolution": "720p", "negative_prompt": "",
@@ -144,12 +156,12 @@ MODELS: list[dict[str, Any]] = [
                      "person_generation": "ALLOW", "seed": 0,
                      "model": "veo-3.1-fast-generate", "generate_audio": False}},
     {"id": "veo-2", "name": "Veo 2", "type": "video", "category": "High-Fidelity",
-     "credits": 9, "available": True, "tagline": "Google Veo 2 · 720p · 5-8s",
+     "credits": 10, "available": True, "tagline": "Google Veo 2 · 720p · 5-8s",
      "engine_type": "comfy", "node_class": "VeoVideoGenerationNode",
      "base_inputs": {"aspect_ratio": "16:9", "negative_prompt": "", "duration_seconds": 5,
                      "enhance_prompt": True, "person_generation": "ALLOW", "seed": 0}},
     {"id": "kling-omni", "name": "Kling 3 Omni", "type": "video",
-     "category": "Action", "credits": 9, "available": True,
+     "category": "Action", "credits": 12, "available": True,
      "tagline": "Kling Omni Pro · 720p · 5s",
      "engine_type": "comfy", "node_class": "KlingOmniProTextToVideoNode",
      "base_inputs": {"model_name": "kling-v3-omni", "aspect_ratio": "16:9",
@@ -169,20 +181,20 @@ MODELS: list[dict[str, Any]] = [
                      "aspect_ratio": "16:9", "duration": 5, "seed": 0,
                      "camera_fixed": False, "watermark": False, "generate_audio": False}},
     {"id": "seedance-fast", "name": "Seedance Fast", "type": "video",
-     "category": "Animation", "credits": 6, "available": True,
+     "category": "Animation", "credits": 4, "available": True,
      "tagline": "ByteDance · 480p · 5s",
      "engine_type": "comfy", "node_class": "ByteDanceTextToVideoNode",
      "base_inputs": {"model": "seedance-1-0-pro-fast-251015", "resolution": "480p",
                      "aspect_ratio": "16:9", "duration": 5, "seed": 0,
                      "camera_fixed": False, "watermark": False, "generate_audio": False}},
     {"id": "grok-video", "name": "Grok Imagine Video", "type": "video",
-     "category": "Unrestricted", "credits": 7, "available": True,
+     "category": "Unrestricted", "credits": 8, "available": True,
      "tagline": "xAI Grok Imagine · 720p · 5s",
      "engine_type": "comfy", "node_class": "GrokVideoNode",
      "base_inputs": {"model": "grok-imagine-video", "resolution": "720p",
                      "aspect_ratio": "16:9", "duration": 5, "seed": 0}},
     {"id": "happyhorse", "name": "HappyHorse 1.0", "type": "video",
-     "category": "Experimental", "credits": 6, "available": True,
+     "category": "Experimental", "credits": 5, "available": True,
      "tagline": "HappyHorse audio-video",
      "engine_type": "comfy", "node_class": "HappyHorseTextToVideoApi",
      "base_inputs": {"model": "happyhorse-1-0", "seed": 0, "watermark": False},
@@ -199,7 +211,7 @@ MODELS: list[dict[str, Any]] = [
      "base_inputs": {"aspect_ratio": "16:9", "quality": "540p", "duration_seconds": 5,
                      "motion_mode": "normal", "seed": 0, "negative_prompt": ""}},
     {"id": "hailuo", "name": "MiniMax Hailuo", "type": "video", "category": "Cinematic",
-     "credits": 7, "available": True, "tagline": "MiniMax Hailuo · 768p · 6s",
+     "credits": 8, "available": True, "tagline": "MiniMax Hailuo · 768p · 6s",
      "engine_type": "comfy", "node_class": "MinimaxHailuoVideoNode",
      "base_inputs": {"seed": 0, "prompt_optimizer": True, "duration": 6, "resolution": "768P"},
      "prompt_field": "prompt_text", "aspect_field": None},
@@ -208,12 +220,53 @@ MODELS: list[dict[str, Any]] = [
      "engine_type": "comfy", "node_class": "MinimaxTextToVideoNode",
      "base_inputs": {"model": "MiniMax-Hailuo-02", "seed": 0},
      "prompt_field": "prompt_text", "aspect_field": None},
+
+    # -------------- I2V / Start-End / Camera-Control models --------------
+    {"id": "kling-start-end", "name": "Kling · Start→End Frame", "type": "video",
+     "category": "Image-to-Video", "credits": 12, "available": True,
+     "tagline": "Blend a start frame into an end frame — cinematic transition",
+     "engine_type": "comfy", "node_class": "KlingStartEndFrameNode",
+     "base_inputs": {"negative_prompt": "", "cfg_scale": 0.5, "aspect_ratio": "16:9",
+                     "mode": "pro mode / 5s duration / kling-v2-1"},
+     "caps": {"start_frame": "start_frame", "end_frame": "end_frame"}},
+    {"id": "kling-camera-control", "name": "Kling · Camera Control", "type": "video",
+     "category": "Image-to-Video", "credits": 12, "available": True,
+     "tagline": "Direct the shot with pro camera controls",
+     "engine_type": "comfy", "node_class": "KlingCameraControlI2VNode",
+     "base_inputs": {"negative_prompt": "", "cfg_scale": 0.5, "aspect_ratio": "16:9",
+                     "camera_control": "zoom in"},
+     "caps": {"start_frame": "start_frame", "camera_control": "camera_control"},
+     "camera_options": ["zoom in", "zoom out", "pan left", "pan right", "tilt up", "tilt down", "orbit", "static"]},
+    {"id": "kling-i2v", "name": "Kling · Image-to-Video", "type": "video",
+     "category": "Image-to-Video", "credits": 10, "available": True,
+     "tagline": "Animate a still image with Kling",
+     "engine_type": "comfy", "node_class": "KlingImage2VideoNode",
+     "base_inputs": {"negative_prompt": "", "model_name": "kling-v2-1",
+                     "cfg_scale": 0.5, "mode": "pro mode / 5s duration / kling-v2-1",
+                     "aspect_ratio": "16:9", "duration": "5"},
+     "caps": {"start_frame": "start_frame"}},
+    {"id": "seedance-i2v", "name": "Seedance · Image-to-Video", "type": "video",
+     "category": "Image-to-Video", "credits": 8, "available": True,
+     "tagline": "ByteDance Seedance from a still",
+     "engine_type": "comfy", "node_class": "ByteDanceImageToVideoNode",
+     "base_inputs": {"model": "seedance-1-5-pro-251215", "resolution": "720p",
+                     "aspect_ratio": "16:9", "duration": 5, "seed": 0,
+                     "camera_fixed": False, "watermark": False, "generate_audio": False},
+     "caps": {"start_frame": "image"}},
+    {"id": "luma-i2v", "name": "Luma · Start→End Frame", "type": "video",
+     "category": "Image-to-Video", "credits": 8, "available": True,
+     "tagline": "Luma with both first + last frame keyframes",
+     "engine_type": "comfy", "node_class": "LumaImageToVideoNode",
+     "base_inputs": {"model": "ray-flash-2", "resolution": "720p",
+                     "duration": "5s", "loop": False, "seed": 0},
+     "aspect_field": None,
+     "caps": {"start_frame": "first_image", "end_frame": "last_image"}},
 ]
 
 
 def public_catalog() -> list[dict]:
-    keys = ("id", "name", "type", "category", "credits", "available", "tagline")
-    return [{k: m[k] for k in keys} for m in MODELS]
+    keys = ("id", "name", "type", "category", "credits", "available", "tagline", "caps", "camera_options")
+    return [{k: m[k] for k in keys if k in m} for m in MODELS]
 
 
 def find_model(model_id: str) -> dict | None:
