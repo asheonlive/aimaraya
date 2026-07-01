@@ -28,10 +28,14 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
   const [character, setCharacter] = useState(null);
   const [charsOpen, setCharsOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [motionVideo, setMotionVideo] = useState(null);
+  const [motionImage, setMotionImage] = useState(null);
   const timerRef = useRef(null);
   const imgFileRef = useRef(null);
   const startFileRef = useRef(null);
   const endFileRef = useRef(null);
+  const motionVideoRef = useRef(null);
+  const motionImageRef = useRef(null);
 
   const [modelsLoaded, setModelsLoaded] = useState(false);
   useEffect(() => { api.get("/models").then(r => { setModels(r.data.models || []); setModelsLoaded(true); }); }, []);
@@ -59,6 +63,7 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
   const hasStartFrame = !!caps.start_frame;
   const hasEndFrame = !!caps.end_frame;
   const hasCameraCtrl = !!caps.camera_control;
+  const hasMotionCtrl = !!caps.motion;
   const cameraOptions = selected?.camera_options || [];
   useEffect(() => {
     if (hasCameraCtrl && !cameraCtrl && cameraOptions.length) setCameraCtrl(cameraOptions[0]);
@@ -104,11 +109,14 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
         aspect_ratio: aspect,
         duration,
         resolution,
-        ref_image_url: refImage?.url || null,
+        ref_image_url: !hasMotionCtrl ? (refImage?.url || null) : null,
         character_id: character?.id || null,
         start_frame_url: startFrame?.url || null,
         end_frame_url: endFrame?.url || null,
         camera_control: cameraCtrl || null,
+        motion_video_url: hasMotionCtrl ? (motionVideo?.url || null) : null,
+        motion_image_url: hasMotionCtrl ? (motionImage?.url || null) : null,
+        mode: hasMotionCtrl ? "motion" : null,
       };
       const r = await api.post("/generate", body);
       setUser({ ...user, credits: r.data.daily_videos_remaining ?? r.data.credits_remaining, daily_videos_remaining: r.data.daily_videos_remaining ?? r.data.credits_remaining, daily_video_limit: r.data.daily_video_limit ?? user.daily_video_limit });
@@ -125,19 +133,30 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
       <div className="relative flex flex-col">
         {mode === "video" && (
           <div className="flex flex-col sm:flex-row rounded-2xl sm:rounded-t-2xl sm:rounded-b-none overflow-hidden">
-            {hasImageRef && (
+            {hasMotionCtrl && (
+              <>
+                <RefSlot icon={Video} label="Motion Video" limit="0/1" hint="Source video"
+                  preview={motionVideo?.preview} onPick={() => motionVideoRef.current?.click()}
+                  onClear={() => setMotionVideo(null)} />
+                <div className="hidden sm:block w-[1px] bg-white/10" />
+                <RefSlot icon={ImageIcon} label="Character Image" limit="0/1" hint="Character to animate"
+                  preview={motionImage?.preview} onPick={() => motionImageRef.current?.click()}
+                  onClear={() => setMotionImage(null)} />
+              </>
+            )}
+            {!hasMotionCtrl && hasImageRef && (
               <RefSlot icon={ImageIcon} label="Image Ref" limit="0/9" hint="Upload images"
                 preview={refImage?.preview} onPick={() => imgFileRef.current?.click()}
                 onClear={() => setRefImage(null)} />
             )}
-            {hasStartFrame && (
-              <>{hasImageRef && <div className="hidden sm:block w-[1px] bg-white/10" />}
+            {!hasMotionCtrl && hasStartFrame && (
+              <><div className="hidden sm:block w-[1px] bg-white/10" />
               <RefSlot icon={ImageIcon} label="Start Frame" limit="0/1" hint="First frame"
                 preview={startFrame?.preview} onPick={() => startFileRef.current?.click()}
                 onClear={() => setStartFrame(null)} />
               </>
             )}
-            {hasEndFrame && (
+            {!hasMotionCtrl && hasEndFrame && (
               <>{<div className="hidden sm:block w-[1px] bg-white/10" />}
               <RefSlot icon={ImageIcon} label="End Frame" limit="0/1" hint="Last frame"
                 preview={endFrame?.preview} onPick={() => endFileRef.current?.click()}
@@ -149,6 +168,8 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
         <input ref={imgFileRef} type="file" accept="image/*" className="hidden" onChange={handleFileGeneric(setRefImage)} data-testid="promptbox-file" />
         <input ref={startFileRef} type="file" accept="image/*" className="hidden" onChange={handleFileGeneric(setStartFrame)} data-testid="promptbox-start" />
         <input ref={endFileRef} type="file" accept="image/*" className="hidden" onChange={handleFileGeneric(setEndFrame)} data-testid="promptbox-end" />
+        <input ref={motionVideoRef} type="file" accept="video/*" className="hidden" onChange={handleFileGeneric(setMotionVideo)} data-testid="promptbox-motion-video" />
+        <input ref={motionImageRef} type="file" accept="image/*" className="hidden" onChange={handleFileGeneric(setMotionImage)} data-testid="promptbox-motion-image" />
 
         <div className={`glass ring-1 ring-[#a855f7] p-3 sm:p-4 ${mode === "video" ? "rounded-b-2xl rounded-t-none border-t-0" : "rounded-2xl"}`}>
           <div className="flex gap-3">
