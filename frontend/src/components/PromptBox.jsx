@@ -212,10 +212,18 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <Pill>
                 <select value={modelId} onChange={(e) => setModelId(e.target.value)} data-testid="promptbox-model" className="bg-transparent outline-none text-sm">
-                  {filteredModels.map(m => {
-                    const group = m.group || m.name.split(" ")[0];
-                    return <option key={m.id} value={m.id} className="bg-[#0d0919]">{group !== m.name ? `[${group}] ${m.name}` : m.name}</option>;
-                  })}
+                  {filteredModels.reduce((groups, m) => {
+                    const g = m.group || m.name.split(" ")[0];
+                    if (!groups.find(x => x.group === g)) groups.push({ group: g, models: [] });
+                    groups.find(x => x.group === g).models.push(m);
+                    return groups;
+                  }, []).map(grp => (
+                    <optgroup key={grp.group} label={grp.group} className="bg-[#0d0919]">
+                      {grp.models.map(m => (
+                        <option key={m.id} value={m.id} className="bg-[#0d0919]">{m.name}</option>
+                      ))}
+                    </optgroup>
+                  ))}
                 </select>
               </Pill>
               <Pill>
