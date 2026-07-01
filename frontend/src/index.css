@@ -238,6 +238,69 @@ body {
     rgba(168,85,247,0.15) 0%, transparent 40%);
 }
 
+/* -------- Page transition -------- */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-in { animation: page-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* -------- Skeleton -------- */
+@keyframes skeleton-pulse {
+  0%,100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #1a1530 0%, #2a2340 50%, #1a1530 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2.4s linear infinite, skeleton-pulse 2.4s ease-in-out infinite;
+  border-radius: 12px;
+}
+
+/* -------- Counter -------- */
+.count-up { display: inline-block; }
+@keyframes count-in {
+  from { transform: translateY(20px); opacity: 0; filter: blur(6px); }
+  to { transform: translateY(0); opacity: 1; filter: blur(0); }
+}
+.count-in { animation: count-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+/* -------- Hover tilt (subtle) -------- */
+.card-tilt {
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  transform-style: preserve-3d;
+}
+.card-tilt:hover {
+  transform: perspective(1000px) rotateX(2deg) rotateY(-2deg) translateY(-4px);
+  box-shadow: 0 25px 50px -12px rgba(168,85,247,0.35);
+}
+
+/* -------- Border-beam (moving gradient border) -------- */
+.beam { position: relative; overflow: hidden; border-radius: 20px; }
+.beam::before {
+  content: "";
+  position: absolute; inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: conic-gradient(from var(--beam-angle, 0deg),
+    transparent 0deg, #a855f7 30deg, #6366f1 60deg, transparent 90deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: beam-rotate 4s linear infinite;
+  pointer-events: none;
+}
+@keyframes beam-rotate {
+  0% { --beam-angle: 0deg; }
+  100% { --beam-angle: 360deg; }
+}
+@property --beam-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
 .card-purple {
   background: linear-gradient(180deg, rgba(168,85,247,0.08) 0%, rgba(26,21,48,0.4) 100%);
   border: 1px solid rgba(168,85,247,0.18);

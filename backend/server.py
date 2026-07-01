@@ -569,9 +569,9 @@ async def _plan_shots(concept: str, panels: int, style: str) -> list[str]:
 @api.post("/storyboard")
 async def create_storyboard(req: StoryboardReq, user=Depends(current_user)):
     panels = max(3, min(int(req.panels or 6), 8))
-    image_model = find_model("gpt-image-2")
+    image_model = find_model("gpt-image-1")
     if not image_model:
-        raise HTTPException(500, "GPT Image 2 not configured")
+        raise HTTPException(500, "Storyboard image model not configured")
 
     cost_per_panel = image_model["credits"]
     total_cost = cost_per_panel * panels + 2  # +2 for LLM planning
@@ -592,32 +592,21 @@ async def create_storyboard(req: StoryboardReq, user=Depends(current_user)):
         if not shots:
             raise RuntimeError("Agent failed to produce shot list.")
 
-        # Generate panels sequentially (Comfy handles rate).
-        panel_docs = []
-        for idx, shot_prompt in enumerate(shots, start=1):
+        async def _one_panel(idx: int, shot_prompt: str) -> dict:
             try:
                 fname, _ = await _generate_comfy(image_model, shot_prompt, "1:1", None)
-                panel_docs.append({
-                    "id": str(uuid.uuid4()),
-                    "index": idx,
-                    "prompt": shot_prompt,
-                    "media_url": f"/api/media/{fname}",
-                    "filename": fname,
-                    "video_url": None,
-                    "video_status": None,
-                })
+                return {"id": str(uuid.uuid4()), "index": idx, "prompt": shot_prompt,
+                        "media_url": f"/api/media/{fname}", "filename": fname,
+                        "video_url": None, "video_status": None}
             except Exception as e:
                 logger.exception("Panel %d failed", idx)
-                panel_docs.append({
-                    "id": str(uuid.uuid4()),
-                    "index": idx,
-                    "prompt": shot_prompt,
-                    "media_url": None,
-                    "filename": None,
-                    "video_url": None,
-                    "video_status": "failed",
-                    "error": str(e)[:200],
-                })
+                return {"id": str(uuid.uuid4()), "index": idx, "prompt": shot_prompt,
+                        "media_url": None, "filename": None,
+                        "video_url": None, "video_status": "failed",
+                        "error": str(e)[:200]}
+
+        # Generate panels concurrently — Comfy Cloud handles queuing.
+        panel_docs = await asyncio.gather(*[_one_panel(i, s) for i, s in enumerate(shots, start=1)])
 
         doc = {
             "id": story_id,

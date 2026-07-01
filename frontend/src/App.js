@@ -19,6 +19,7 @@ import Models from "@/pages/Models";
 import Settings from "@/pages/Settings";
 import ComingSoon from "@/pages/ComingSoon";
 import Storyboard from "@/pages/Storyboard";
+import Profile from "@/pages/Profile";
 import About from "@/pages/About";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
@@ -72,6 +73,8 @@ export default function App() {
             <Route path="assets" element={<Assets />} />
             <Route path="explore" element={<Explore />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="account" element={<Profile />} />
           </Route>
         </Routes>
       </BrowserRouter>

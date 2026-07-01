@@ -170,7 +170,13 @@ export default function AppShell() {
             </Link>
             <Link to="/pricing" className="btn-primary !py-1.5 !px-3 text-xs">Upgrade</Link>
             <button className="p-2 text-white/60 hover:text-white transition"><Bell className="w-4 h-4" /></button>
-            <button data-testid="topbar-logout" onClick={() => { logout(); nav("/"); }} className="p-2 text-white/60 hover:text-white transition"><LogOut className="w-4 h-4" /></button>
+            <button data-testid="topbar-profile" onClick={() => nav("/app/profile")} className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-white/[0.06] transition">
+              <div className="w-7 h-7 rounded-full gradient-purple flex items-center justify-center text-xs font-bold text-white">
+                {(user.name || user.email || "?").charAt(0).toUpperCase()}
+              </div>
+              <span className="hidden sm:block text-xs text-white/80 max-w-[100px] truncate">{user.name || user.email.split("@")[0]}</span>
+            </button>
+            <button data-testid="topbar-logout" onClick={() => { logout(); nav("/"); }} className="p-2 text-white/60 hover:text-red-300 transition" title="Log out"><LogOut className="w-4 h-4" /></button>
           </div>
         </header>
         <main className="flex-1 relative z-10"><Outlet /></main>

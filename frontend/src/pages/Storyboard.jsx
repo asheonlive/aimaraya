@@ -51,7 +51,7 @@ export default function Storyboard() {
     } finally { setAnimating(false); }
   };
 
-  const estImage = 4 * panels + 2;
+  const estImage = 5 * panels + 2;
   const validPanels = (story?.panels || []).filter(p => p.media_url).length;
   const videoCost = validPanels * (VIDEO_MODELS.find(v => v.id === videoModel) ? 6 : 6);
 
@@ -67,7 +67,7 @@ export default function Storyboard() {
         </div>
       </div>
       <p className="text-sm text-[#a89dc9] mb-8 max-w-2xl">
-        Type a concept, the agent breaks it into shots, and GPT Image 2 draws every panel. Then hit <span className="text-[#c084fc]">Animate All</span> and every panel becomes a video — automatically.
+        Type a concept, the agent breaks it into shots, and GPT Image 1 draws every panel. Then hit <span className="text-[#c084fc]">Animate All</span> and every panel becomes a video — automatically.
       </p>
 
       {/* CONTROL PANEL */}
