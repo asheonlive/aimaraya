@@ -526,6 +526,7 @@ class StoryboardReq(BaseModel):
     concept: str
     panels: int = 6
     style: Optional[str] = "cinematic"
+    image_model: Optional[str] = "gpt-image-1"
 
 class AnimateReq(BaseModel):
     video_model: str = "seedance-fast"
@@ -569,7 +570,10 @@ async def _plan_shots(concept: str, panels: int, style: str) -> list[str]:
 @api.post("/storyboard")
 async def create_storyboard(req: StoryboardReq, user=Depends(current_user)):
     panels = max(3, min(int(req.panels or 6), 8))
-    image_model = find_model("gpt-image-1")
+    image_model = find_model(req.image_model or "gpt-image-1")
+    if not image_model or image_model.get("type") != "image" or not image_model.get("available"):
+        # Fallback to a proven image model
+        image_model = find_model("gpt-image-1")
     if not image_model:
         raise HTTPException(500, "Storyboard image model not configured")
 

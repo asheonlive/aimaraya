@@ -7,6 +7,15 @@ import {
 } from "lucide-react";
 
 const STYLES = ["cinematic", "anime", "photorealistic", "3D animation", "watercolor", "noir"];
+const IMAGE_MODELS = [
+  { id: "gpt-image-1",     label: "GPT Image 1 · 5cr",     credits: 5 },
+  { id: "flux-1.1-ultra",  label: "FLUX 1.1 Ultra · 3cr",  credits: 3 },
+  { id: "ideogram-v4",     label: "Ideogram V4 · 3cr",     credits: 3 },
+  { id: "recraft-v4",      label: "Recraft V4 · 3cr",      credits: 3 },
+  { id: "seedream-v2",     label: "Seedream 2 · 3cr",      credits: 3 },
+  { id: "grok-image",      label: "Grok Imagine · 3cr",    credits: 3 },
+  { id: "stability-ultra", label: "Stability Ultra · 4cr", credits: 4 },
+];
 const VIDEO_MODELS = [
   { id: "seedance-fast", label: "Seedance Fast · 5s" },
   { id: "seedance-pro",  label: "Seedance Pro · 5s" },
@@ -21,6 +30,7 @@ export default function Storyboard() {
   const [panels, setPanels] = useState(6);
   const [style, setStyle] = useState("cinematic");
   const [videoModel, setVideoModel] = useState("seedance-fast");
+  const [imageModel, setImageModel] = useState("gpt-image-1");
   const [autoAnimate, setAutoAnimate] = useState(true);
   const [busy, setBusy] = useState(false);
   const [animating, setAnimating] = useState(false);
@@ -50,7 +60,7 @@ export default function Storyboard() {
     if (!concept.trim()) return toast.error("Describe your concept first");
     setBusy(true); setStory(null);
     try {
-      const r = await api.post("/storyboard", { concept, panels, style });
+      const r = await api.post("/storyboard", { concept, panels, style, image_model: imageModel });
       setStory(r.data.storyboard);
       setUser({ ...user, credits: r.data.credits_remaining });
       const ok = (r.data.storyboard.panels || []).filter(p => p.media_url).length;
@@ -70,7 +80,7 @@ export default function Storyboard() {
     await doAnimate(story.id);
   };
 
-  const estImage = 5 * panels + 2;
+  const estImage = (IMAGE_MODELS.find(m => m.id === imageModel)?.credits || 5) * panels + 2;
   const validPanels = (story?.panels || []).filter(p => p.media_url).length;
   const videoCost = validPanels * (VIDEO_MODELS.find(v => v.id === videoModel) ? 6 : 6);
 
@@ -101,7 +111,7 @@ export default function Storyboard() {
             placeholder="Describe your story or scene..."
           />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="text-xs uppercase tracking-[0.2em] text-[#a89dc9] mb-2 block">Panels</label>
             <div className="flex gap-1">
@@ -114,6 +124,12 @@ export default function Storyboard() {
             <label className="text-xs uppercase tracking-[0.2em] text-[#a89dc9] mb-2 block">Style</label>
             <select value={style} onChange={(e) => setStyle(e.target.value)} data-testid="story-style" className="w-full bg-[#0d0919] border border-[#2a2340] rounded-lg px-3 py-2.5 text-sm">
               {STYLES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs uppercase tracking-[0.2em] text-[#a89dc9] mb-2 block">Image Model</label>
+            <select value={imageModel} onChange={(e) => setImageModel(e.target.value)} data-testid="story-imagemodel" className="w-full bg-[#0d0919] border border-[#2a2340] rounded-lg px-3 py-2.5 text-sm">
+              {IMAGE_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
             </select>
           </div>
           <div>
