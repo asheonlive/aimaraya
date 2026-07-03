@@ -571,6 +571,18 @@ async def artlist_login_probe(x_debug_token: Optional[str] = Header(None)):
     payload["email"] = os.environ.get("ARTLIST_EMAIL", "")
     return payload
 
+@api.get("/artcraft/status")
+async def artcraft_status(user=Depends(current_user)):
+    """Lightweight ArtCraft fallback-tier health check - logs in and reads
+    the account's credit balance. No generation, no cost."""
+    if not artcraft:
+        return {"configured": False}
+    try:
+        credits = await artcraft.credits()
+        return {"configured": True, "logged_in": True, "credits": credits}
+    except ArtCraftError as e:
+        return {"configured": True, "logged_in": False, "error": str(e)[:300]}
+
 @api.get("/models")
 async def get_models():
     return {"models": public_catalog()}
