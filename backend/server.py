@@ -1,9 +1,10 @@
 """AI MARAYA - Multi-model AI generation platform backend.
 
-Generation is powered solely by the user's own, legitimately paid Comfy Cloud
-account (partner-API nodes for Flux, Kling, Veo, Seedance, etc). There is no
-third-party account pooling or credit-bypass integration here - only real,
-authorized API access.
+Generation is powered by the user's own, legitimately paid accounts only:
+Comfy Cloud (primary, partner-API nodes for Flux, Kling, Veo, Seedance, etc)
+and a single ArtCraft account (automatic fallback for models where Comfy
+fails/times out). There is no third-party account pooling or credit-bypass
+integration here - only real, authorized, single-account API access.
 
 Media storage: generated files and uploaded reference images are stored in
 MongoDB GridFS (not local disk). This keeps the backend stateless so it can
@@ -23,6 +24,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional, List
 
+import aiohttp
 import jwt
 import bcrypt
 from bson import ObjectId
@@ -47,6 +49,10 @@ from models_catalog import (
     build_comfy_workflow,
 )
 from comfy_cloud_client import ComfyCloudClient, ComfyCloudError, collect_output_files
+from artcraft_client import (
+    ArtCraftAccount, ArtCraftClient, ArtCraftError,
+    ARTCRAFT_VIDEO_MODELS, ARTCRAFT_IMAGE_MODELS,
+)
 
 # Playwright (used only by the Artlist.io login probe below) is a heavy,
 # browser-driving dependency that doesn't reliably run in a serverless
@@ -68,11 +74,20 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 # ---------- Setup ----------
+# Mongo + JWT are required for the app to function at all (auth, storage),
+# so we still fail fast and loud if they're missing.
 MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
 JWT_SECRET = os.environ["JWT_SECRET"]
-EMERGENT_LLM_KEY = os.environ["EMERGENT_LLM_KEY"]
-STRIPE_API_KEY = os.environ["STRIPE_API_KEY"]
+
+# EMERGENT_LLM_KEY (Gemini image models + storyboard planning) and
+# STRIPE_API_KEY (credit purchases) are real, separate integrations that may
+# not be set up yet - e.g. this project is currently selling credits through
+# a Telegram bot instead of the web Stripe checkout. Treat them as optional
+# at startup so the rest of the app (auth, Comfy Cloud generation, browsing)
+# still works; the specific routes that need them raise a clear 501 instead.
+EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
+STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "")
 JWT_ALG = "HS256"
 
 client = AsyncIOMotorClient(MONGO_URL)
@@ -135,6 +150,17 @@ comfy = ComfyCloudClient(
     email=os.environ.get("COMFY_EMAIL", ""),
     password=os.environ.get("COMFY_PASSWORD", ""),
     firebase_api_key=os.environ.get("COMFY_FIREBASE_API_KEY", ""),
+)
+
+# ArtCraft client - single real account, used only as an automatic fallback
+# when Comfy Cloud fails/times out for a model that has a known ArtCraft
+# equivalent (see ARTCRAFT_VIDEO_MODELS/ARTCRAFT_IMAGE_MODELS). None if not
+# configured - no third-party account pooling, one real login only.
+_artcraft_email = os.environ.get("ARTCRAFT_EMAIL", "")
+_artcraft_password = os.environ.get("ARTCRAFT_PASSWORD", "")
+artcraft = (
+    ArtCraftClient(ArtCraftAccount(_artcraft_email, _artcraft_password))
+    if _artcraft_email and _artcraft_password else None
 )
 
 # ---------- Simple in-memory rate limiter ----------
@@ -230,6 +256,10 @@ def public_user(u: dict) -> dict:
 # ---------- Generation engines ----------
 async def _generate_gemini(model: dict, prompt: str, aspect_ratio: str) -> tuple[str, str]:
     """Returns (media_id, mime_ext)."""
+    if not EMERGENT_LLM_KEY:
+        # RuntimeError (not HTTPException) so /generate's except-branch below
+        # still refunds the already-deducted credits.
+        raise RuntimeError("Gemini models aren't configured yet (missing EMERGENT_LLM_KEY).")
     session_id = f"gen-{uuid.uuid4()}"
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY, session_id=session_id,
@@ -346,6 +376,54 @@ async def _generate_comfy(model: dict, prompt: str, aspect_ratio: str,
     ext = Path(item.get("filename", "out.bin")).suffix.lstrip(".") or ("mp4" if model["type"] == "video" else "png")
     data = await comfy.fetch_bytes(src_url)
     content_type = mimetypes.guess_type(f"out.{ext}")[0] or ("video/mp4" if model["type"] == "video" else "image/png")
+    media_id = await store_media(data, f"gen.{ext}", content_type)
+    return media_id, ext
+
+
+async def _generate_artcraft(model: dict, prompt: str, aspect_ratio: str,
+                              ref_media_id: Optional[str] = None,
+                              duration: str = "5s", resolution: str = "720p") -> tuple[str, str]:
+    """Generate via the user's single real ArtCraft account. Used only as a
+    fallback (see /generate) when Comfy Cloud fails for a model that has a
+    known ArtCraft equivalent."""
+    if not artcraft:
+        raise ArtCraftError("ArtCraft isn't configured (missing ARTCRAFT_EMAIL/ARTCRAFT_PASSWORD).")
+
+    is_video = model["type"] == "video"
+    artcraft_model = (ARTCRAFT_VIDEO_MODELS if is_video else ARTCRAFT_IMAGE_MODELS).get(model["id"])
+    if not artcraft_model:
+        raise ArtCraftError(f"No ArtCraft equivalent for model '{model['id']}'.")
+
+    ref_token = None
+    if ref_media_id:
+        try:
+            data, _content_type, filename = await load_media(ref_media_id)
+            ref_token = await artcraft.upload_media_bytes(data, filename or "ref.png")
+        except Exception as e:
+            logger.warning("ArtCraft ref upload failed, continuing without it: %s", e)
+
+    if is_video:
+        job_id = await artcraft.generate_video(
+            prompt=prompt, model=artcraft_model, aspect_ratio=aspect_ratio,
+            duration=duration, resolution=resolution, ref_media_token=ref_token,
+        )
+        timeout = int(os.environ.get("ARTCRAFT_VIDEO_TIMEOUT_SECONDS", "240"))
+    else:
+        job_id = await artcraft.generate_image(
+            prompt=prompt, model=artcraft_model, aspect_ratio=aspect_ratio,
+            resolution=resolution, ref_media_token=ref_token,
+        )
+        timeout = int(os.environ.get("ARTCRAFT_IMAGE_TIMEOUT_SECONDS", "120"))
+
+    media_url = await artcraft.poll_job(job_id, timeout=timeout)
+    async with aiohttp.ClientSession() as session:
+        async with session.get(media_url) as resp:
+            if resp.status >= 400:
+                raise ArtCraftError(f"ArtCraft output download failed: HTTP {resp.status}")
+            data = await resp.read()
+
+    ext = "mp4" if is_video else "png"
+    content_type = "video/mp4" if is_video else "image/png"
     media_id = await store_media(data, f"gen.{ext}", content_type)
     return media_id, ext
 
@@ -486,13 +564,29 @@ async def generate(req: GenerateReq, user=Depends(current_user)):
             fname, _ext = await _generate_gemini(model, effective_prompt, req.aspect_ratio)
             media_url = f"/api/media/{fname}"
         elif model["engine_type"] == "comfy":
-            fname, _ext = await _generate_comfy(
-                model, effective_prompt, req.aspect_ratio,
-                ref_media_id=ref_media,
-                start_media_id=start_media,
-                end_media_id=end_media,
-                camera_control=req.camera_control,
-            )
+            try:
+                fname, _ext = await _generate_comfy(
+                    model, effective_prompt, req.aspect_ratio,
+                    ref_media_id=ref_media,
+                    start_media_id=start_media,
+                    end_media_id=end_media,
+                    camera_control=req.camera_control,
+                )
+            except Exception as comfy_err:
+                # Automatic fallback: if Comfy Cloud fails/times out and this
+                # model has a known ArtCraft equivalent on the user's own
+                # ArtCraft account, retry there before giving up entirely.
+                has_fallback = artcraft and model["id"] in (
+                    ARTCRAFT_VIDEO_MODELS if model["type"] == "video" else ARTCRAFT_IMAGE_MODELS
+                )
+                if not has_fallback:
+                    raise
+                logger.warning("Comfy failed for %s (%s), falling back to ArtCraft", model["id"], comfy_err)
+                fname, _ext = await _generate_artcraft(
+                    model, effective_prompt, req.aspect_ratio,
+                    ref_media_id=ref_media, duration=req.duration or "5s",
+                    resolution=req.resolution or "720p",
+                )
             media_url = f"/api/media/{fname}"
         else:
             raise RuntimeError(f"Unknown engine_type: {model['engine_type']}")
@@ -599,6 +693,8 @@ async def delete_character(char_id: str, user=Depends(current_user)):
 # --- Stripe ---
 @api.post("/checkout/session")
 async def create_checkout(req: CheckoutReq, http_request: Request, user=Depends(current_user)):
+    if not STRIPE_API_KEY:
+        raise HTTPException(501, "Credit purchases aren't configured yet (missing STRIPE_API_KEY).")
     if req.package_id not in PACKAGES:
         raise HTTPException(400, "Invalid package")
     pkg = PACKAGES[req.package_id]
@@ -627,6 +723,8 @@ async def create_checkout(req: CheckoutReq, http_request: Request, user=Depends(
 
 @api.get("/checkout/status/{session_id}")
 async def checkout_status(session_id: str, http_request: Request, user=Depends(current_user)):
+    if not STRIPE_API_KEY:
+        raise HTTPException(501, "Credit purchases aren't configured yet (missing STRIPE_API_KEY).")
     txn = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
     if not txn:
         raise HTTPException(404, "Session not found")
@@ -653,6 +751,8 @@ async def checkout_status(session_id: str, http_request: Request, user=Depends(c
 
 @api.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
+    if not STRIPE_API_KEY:
+        raise HTTPException(501, "Stripe isn't configured on this deployment.")
     body = await request.body()
     sig = request.headers.get("Stripe-Signature")
     host_url = str(request.base_url).rstrip("/")
@@ -694,6 +794,10 @@ STORY_SYSTEM = (
 
 async def _plan_shots(concept: str, panels: int, style: str) -> list[str]:
     """Use Emergent LLM (Claude) to plan N shots. Returns list of prompts."""
+    if not EMERGENT_LLM_KEY:
+        # Raised as RuntimeError (not HTTPException) so create_storyboard's
+        # generic except-branch below still refunds the already-deducted credits.
+        raise RuntimeError("Storyboard planning isn't configured yet (missing EMERGENT_LLM_KEY).")
     import json as _json
     chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"story-{uuid.uuid4()}",
                    system_message=STORY_SYSTEM)
