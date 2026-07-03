@@ -924,44 +924,33 @@ class StoryboardReq(BaseModel):
 class AnimateReq(BaseModel):
     video_model: str = "seedance-fast"
 
-STORY_SYSTEM = (
-    "You are a cinematic storyboard director. Break a concept into a numbered sequence of shots. "
-    "For each shot, write a single vivid image-generation prompt (~30-45 words) describing camera angle, "
-    "subject, action, lighting and mood. Return ONLY a JSON object with a 'shots' array."
-)
+# Comfy Cloud/ArtCraft only expose image/video generation nodes (no text/LLM
+# node), so shot planning can't be routed through either - there's no AI
+# service configured for it. Instead, expand a concept into N shots using
+# varied camera framings and narrative beats, so panels still look like a
+# real storyboard rather than N copies of the same prompt.
+_SHOT_FRAMINGS = [
+    "wide establishing shot", "medium shot", "close-up", "low-angle shot",
+    "over-the-shoulder shot", "high-angle overview shot", "dutch-angle dynamic shot",
+    "tracking shot", "extreme close-up", "aerial shot",
+]
+_SHOT_BEATS = [
+    "establishing the scene", "developing the action", "building tension",
+    "the turning point", "the emotional peak", "resolving the moment",
+]
 
 async def _plan_shots(concept: str, panels: int, style: str) -> list[str]:
-    """Use Emergent LLM (Claude) to plan N shots. Returns list of prompts."""
-    if not EMERGENT_LLM_KEY:
-        # Raised as RuntimeError (not HTTPException) so create_storyboard's
-        # generic except-branch below still refunds the already-deducted credits.
-        raise RuntimeError("Storyboard planning isn't configured yet (missing EMERGENT_LLM_KEY).")
-    import json as _json
-    chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"story-{uuid.uuid4()}",
-                   system_message=STORY_SYSTEM)
-    chat.with_model("anthropic", "claude-sonnet-4-5-20250929")
-    ask = (
-        f"Concept: {concept}\n"
-        f"Style: {style}\n"
-        f"Number of shots: {panels}\n"
-        "Return JSON: {\"shots\": [\"shot1 prompt\", \"shot2 prompt\", ...]}. "
-        "Absolutely no other text."
-    )
-    text = await chat.send_message(UserMessage(text=ask))
-    # Extract JSON — model may wrap it in ```json
-    raw = text.strip()
-    if "```" in raw:
-        parts = raw.split("```")
-        for p in parts:
-            if "{" in p:
-                raw = p.replace("json", "", 1).strip(); break
-    try:
-        data = _json.loads(raw)
-        shots = data.get("shots") or data.get("panels") or []
-    except Exception:
-        # Fallback: split by newline
-        shots = [line.strip("-•* 0123456789.") for line in raw.split("\n") if len(line.strip()) > 15][:panels]
-    return [s for s in shots if s][:panels]
+    """Expand a concept into N distinct cinematic shot prompts."""
+    shots = []
+    for i in range(panels):
+        framing = _SHOT_FRAMINGS[i % len(_SHOT_FRAMINGS)]
+        beat_idx = min(i * len(_SHOT_BEATS) // max(panels, 1), len(_SHOT_BEATS) - 1)
+        beat = _SHOT_BEATS[beat_idx]
+        shots.append(
+            f"{framing.capitalize()} of {concept}, {beat}, {style} style, "
+            "detailed lighting and composition, high production value."
+        )
+    return shots
 
 
 @api.post("/storyboard")
