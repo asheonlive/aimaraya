@@ -35,13 +35,20 @@ export function AuthProvider({ children }) {
     return res.data.user;
   };
 
+  const loginWithTelegram = async (telegramUser) => {
+    const res = await api.post("/auth/telegram", telegramUser);
+    localStorage.setItem("maraya_token", res.data.token);
+    setUser(res.data.user);
+    return res.data.user;
+  };
+
   const logout = () => {
     localStorage.removeItem("maraya_token");
     setUser(null);
   };
 
   return (
-    <AuthCtx.Provider value={{ user, setUser, loading, login, register, logout, refresh }}>
+    <AuthCtx.Provider value={{ user, setUser, loading, login, register, loginWithTelegram, logout, refresh }}>
       {children}
     </AuthCtx.Provider>
   );

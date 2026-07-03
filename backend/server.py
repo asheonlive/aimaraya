@@ -16,6 +16,8 @@ import time
 import uuid
 import base64
 import asyncio
+import hashlib
+import hmac
 import logging
 import tempfile
 import mimetypes
@@ -172,6 +174,12 @@ artcraft = (
 ARTLIST_RELAY_URL = os.environ.get("ARTLIST_RELAY_URL", "")
 ARTLIST_RELAY_SECRET = os.environ.get("ARTLIST_RELAY_SECRET", "")
 
+# Telegram Login Widget - same bot as the Telegram bot itself, so a user's
+# website account and bot account are the same verified identity. Telegram
+# accounts require a real phone number, so this is also how free-trial
+# credits are gated against email-farming.
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+
 # ---------- Simple in-memory rate limiter ----------
 # Per-user sliding-window limiter. No external dependency (Redis, etc.) so it
 # works out of the box on a single-process deployment. If the backend is ever
@@ -212,6 +220,15 @@ class LoginReq(BaseModel):
     email: EmailStr
     password: str
 
+class TelegramAuthReq(BaseModel):
+    id: int
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    username: Optional[str] = None
+    photo_url: Optional[str] = None
+    auth_date: int
+    hash: str
+
 class GenerateReq(BaseModel):
     prompt: str
     model_id: str = "nano-banana"
@@ -247,6 +264,26 @@ def make_token(user_id: str) -> str:
         JWT_SECRET, algorithm=JWT_ALG,
     )
 
+def verify_telegram_login(payload: dict) -> bool:
+    """Verify a Telegram Login Widget payload per Telegram's HMAC spec:
+    https://core.telegram.org/widgets/login#checking-authorization"""
+    if not TELEGRAM_BOT_TOKEN:
+        return False
+    payload = dict(payload)
+    check_hash = payload.pop("hash", None)
+    if not check_hash:
+        return False
+    auth_date = payload.get("auth_date")
+    try:
+        if auth_date is None or time.time() - int(auth_date) > 86400:
+            return False
+    except (TypeError, ValueError):
+        return False
+    data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(payload.items()))
+    secret_key = hashlib.sha256(TELEGRAM_BOT_TOKEN.encode()).digest()
+    computed = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(computed, check_hash)
+
 async def current_user(authorization: Optional[str] = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(401, "Not authenticated")
@@ -260,7 +297,8 @@ async def current_user(authorization: Optional[str] = Header(None)):
         raise HTTPException(401, "Invalid token")
 
 def public_user(u: dict) -> dict:
-    return {k: u[k] for k in ("id", "email", "name", "credits", "created_at") if k in u}
+    fields = ("id", "email", "name", "credits", "created_at", "telegram_id", "telegram_username")
+    return {k: u[k] for k in fields if k in u}
 
 # ---------- Generation engines ----------
 async def _generate_gemini(model: dict, prompt: str, aspect_ratio: str) -> tuple[str, str]:
@@ -540,6 +578,31 @@ async def login(req: LoginReq):
     user = await db.users.find_one({"email": req.email.lower()})
     if not user or not verify_pw(req.password, user["password"]):
         raise HTTPException(400, "Invalid email or password")
+    return {"token": make_token(user["id"]), "user": public_user(user)}
+
+@api.post("/auth/telegram")
+async def telegram_login(req: TelegramAuthReq):
+    """Login/signup via the Telegram Login Widget - same identity as the
+    Telegram bot. Telegram accounts require a verified phone number, so a
+    new account here is trusted enough to receive the free-trial credits;
+    returning users (same telegram_id) just get logged in, not re-granted."""
+    if not verify_telegram_login(req.dict()):
+        raise HTTPException(401, "Invalid Telegram login")
+
+    telegram_id = str(req.id)
+    user = await db.users.find_one({"telegram_id": telegram_id})
+    if not user:
+        user_id = str(uuid.uuid4())
+        doc = {
+            "id": user_id,
+            "telegram_id": telegram_id,
+            "telegram_username": req.username,
+            "name": req.first_name or req.username or "Telegram User",
+            "credits": 100,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.users.insert_one(doc)
+        user = doc
     return {"token": make_token(user["id"]), "user": public_user(user)}
 
 @api.get("/auth/me")

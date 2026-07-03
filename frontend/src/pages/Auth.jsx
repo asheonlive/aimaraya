@@ -1,13 +1,14 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import TelegramLoginButton from "@/components/TelegramLoginButton";
 import { Sparkles } from "lucide-react";
 
 export default function Auth() {
-  const { login, register } = useAuth();
+  const { login, register, loginWithTelegram } = useAuth();
   const nav = useNavigate();
   const [mode, setMode] = useState("login"); // "login" | "register"
   const [name, setName] = useState("");
@@ -32,6 +33,16 @@ export default function Auth() {
     } finally { setLoading(false); }
   };
 
+  const handleTelegramAuth = useCallback(async (telegramUser) => {
+    try {
+      await loginWithTelegram(telegramUser);
+      toast.success("Welcome to AI MARAYA");
+      nav("/app");
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Telegram login failed");
+    }
+  }, [loginWithTelegram, nav]);
+
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-6 py-10 relative">
       <div className="orb w-[500px] h-[500px] top-0 -right-40" />
@@ -48,6 +59,12 @@ export default function Auth() {
             ? "Sign up to start generating with AI MARAYA."
             : "Sign in to continue creating."}
         </p>
+        <TelegramLoginButton onAuth={handleTelegramAuth} />
+        <div className="flex items-center gap-3 my-6">
+          <div className="h-px flex-1 bg-[#2a2340]" />
+          <span className="text-xs text-[#a89dc9]">or use email</span>
+          <div className="h-px flex-1 bg-[#2a2340]" />
+        </div>
         <form onSubmit={submit} className="space-y-3">
           {mode === "register" && (
             <Input data-testid="auth-name" placeholder="Name (optional)" value={name}
