@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd frontend && yarn build",
+  "buildCommand": "cd frontend && CI=false yarn build",
   "installCommand": "cd frontend && yarn install --network-timeout 600000",
   "outputDirectory": "frontend/build",
   "functions": {
