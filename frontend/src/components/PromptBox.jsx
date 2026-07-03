@@ -8,9 +8,7 @@ import {
   Users, Clock, Maximize2, Sparkles,
 } from "lucide-react";
 
-const MODEL_SUPPORTS_IMAGE_REF = ["flux-kontext-pro", "flux-kontext-max", "flux-1.1-ultra", "flux-2-pro"];
-
-export default function PromptBox({ mode = "image", onResult, onGenerating, defaultModel }) {
+export default function PromptBox({ mode = "image", onResult, onGenerating, onJobUpdate, defaultModel }) {
   const { user, setUser } = useAuth();
   const [models, setModels] = useState([]);
   const [modelId, setModelId] = useState(defaultModel || (mode === "video" ? "vseeds" : "in2"));
@@ -44,20 +42,21 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
     if (modelId && !ids.includes(modelId) && ids.length) setModelId(ids[0]);
   }, [mode, models.length]);
   const selected = models.find(m => m.id === modelId) || null;
-  const isKlingSeedance = selected && /^(kling|seedance)/i.test(selected.id);
-  const videoResolutions = isKlingSeedance ? (selected?.resolutions?.length ? selected.resolutions : ["480p", "720p"]) : ["720p", "1080p"];
+  const videoResolutions = selected?.resolutions?.length ? selected.resolutions : ["720p"];
   const videoDurations = selected?.durations?.length ? selected.durations : ["5s", "8s", "10s", "12s"];
   const imageResolutions = selected?.resolutions?.length ? selected.resolutions : ["1K", "2K", "4K"];
   useEffect(() => {
     if (mode === "video" && !videoResolutions.includes(resolution) && videoResolutions.length) {
       setResolution(videoResolutions[videoResolutions.length - 1]);
     }
-  }, [modelId, mode]);
+    if (mode === "video" && !videoDurations.includes(duration) && videoDurations.length) {
+      setDuration(videoDurations[0]);
+    }
+  }, [modelId, mode, selected?.id]);
 
   const videosRemaining = user?.daily_videos_remaining ?? user?.credits ?? 0;
-  const modelSupportsImageRef = selected && MODEL_SUPPORTS_IMAGE_REF.includes(selected.id);
   const caps = selected?.caps || {};
-  const hasImageRef = !!caps.image_ref;
+  const hasImageRef = !!caps.image_ref || !!caps.reference_images;
   const hasStartFrame = !!caps.start_frame;
   const hasEndFrame = !!caps.end_frame;
   const hasCameraCtrl = !!caps.camera_control;
@@ -66,9 +65,10 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
   useEffect(() => {
     if (hasCameraCtrl && !cameraCtrl && cameraOptions.length) setCameraCtrl(cameraOptions[0]);
     if (!hasCameraCtrl) setCameraCtrl("");
+    if (!hasImageRef) setRefImage(null);
     if (!hasStartFrame) setStartFrame(null);
     if (!hasEndFrame) setEndFrame(null);
-  }, [modelId]);
+  }, [modelId, hasImageRef, hasStartFrame, hasEndFrame, hasCameraCtrl]);
 
   const uploadFile = async (f) => {
     const fd = new FormData();
@@ -88,49 +88,145 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
   useEffect(() => {
     if (!jobs.length) return;
     const id = setInterval(() => {
-      setJobs(prev => prev.map(j => j.status === "running" ? { ...j, elapsed: (j.elapsed || 0) + 0.25 } : j));
+      setJobs(prev => prev.map(j => {
+        if (j.status !== "running") return j;
+        const next = { ...j, elapsed: (j.elapsed || 0) + 0.25 };
+        onJobUpdate?.({ id: next.id, elapsed: next.elapsed, status: next.status, stage: next.stage, progress: next.progress, prompt: next.prompt, model: next.model });
+        return next;
+      }));
     }, 250);
     return () => clearInterval(id);
   }, [!!jobs.length]);
 
+  const patchJob = (id, patch) => {
+    setJobs(prev => prev.map(j => j.id === id ? { ...j, ...patch } : j));
+    onJobUpdate?.({ id, ...patch });
+  };
+
+  const parseResponsePayload = async (response) => {
+    const text = await response.text();
+    if (!text) {
+      return { detail: response.ok ? "" : `Empty response from server (${response.status})` };
+    }
+    try {
+      return JSON.parse(text);
+    } catch {
+      return {
+        detail: text.startsWith("<")
+          ? `Server returned HTML instead of JSON (${response.status})`
+          : text.slice(0, 240),
+      };
+    }
+  };
+
+  const pollJob = async (jobId, localId, meta) => {
+    while (true) {
+      const res = await fetch(resolveMedia(`/api/jobs/${jobId}`), {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${localStorage.getItem("maraya_token") || ""}`,
+        },
+      });
+      const job = await parseResponsePayload(res);
+      if (!res.ok) {
+        throw new Error(job.detail || "Could not read generation status.");
+      }
+      patchJob(localId, {
+        status: job.status === "failed" ? "error" : job.status,
+        stage: job.stage || "Generating",
+        progress: Number(job.progress || 0),
+        provider: job.provider || meta.provider || "",
+      });
+      if (job.status === "completed") {
+        const generation = {
+          id: job.id || jobId,
+          prompt: meta.prompt,
+          model_id: meta.modelId,
+          model_name: meta.modelName,
+          type: meta.type,
+          media_url: job.resultUrl || job.fileUrl || "",
+        };
+        patchJob(localId, { status: "completed", progress: 100, stage: "Done", media_url: generation.media_url });
+        onResult?.(generation);
+        return generation;
+      }
+      if (job.status === "failed") {
+        throw new Error(job.error || "Generation failed");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  };
+
   const handleGenerate = async () => {
     if (!prompt.trim()) return toast.error("Enter a prompt first");
     if (!selected) return toast.error("Pick a model");
-    const token = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    setJobs(prev => [...prev, { id: token, model: selected.name, prompt: prompt.slice(0, 80), status: "running", elapsed: 0, media_url: null }]);
+      const token = localStorage.getItem("maraya_token");
+      if (!token) return toast.error("Please log in again");
+    const localId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    setJobs(prev => [...prev, { id: localId, model: selected.name, prompt: prompt.slice(0, 80), status: "running", stage: "Uploading", progress: 0, elapsed: 0, media_url: null }]);
+    onJobUpdate?.({ id: localId, status: "running", stage: "Uploading", progress: 0, elapsed: 0, model: selected.name, prompt: prompt.slice(0, 80), media_url: null });
     onGenerating?.(true);
     try {
-      const body = {
-        prompt,
-        model_id: selected.id,
-        aspect_ratio: aspect,
-        duration,
-        resolution,
-        ref_image_url: !hasMotionCtrl ? (refImage?.url || null) : null,
-        character_id: character?.id || null,
-        start_frame_url: startFrame?.url || null,
-        end_frame_url: endFrame?.url || null,
-        camera_control: cameraCtrl || null,
-        motion_video_url: hasMotionCtrl ? (motionVideo?.url || null) : null,
-        motion_image_url: hasMotionCtrl ? (motionImage?.url || null) : null,
-        mode: hasMotionCtrl ? "motion" : null,
-      };
-      const r = await api.post("/generate", body);
-      setUser({ ...user, credits: r.data.daily_videos_remaining ?? r.data.credits_remaining, daily_videos_remaining: r.data.daily_videos_remaining ?? r.data.credits_remaining, daily_video_limit: r.data.daily_video_limit ?? user.daily_video_limit });
-      setJobs(prev => prev.map(j => j.id === token ? { ...j, status: "completed", media_url: r.data.generation?.media_url } : j));
-      onResult?.(r.data.generation);
+      const fd = new FormData();
+      fd.append("category", mode);
+      fd.append("modelKey", selected.id);
+      fd.append("prompt", prompt);
+      fd.append("duration", duration);
+      fd.append("aspect", aspect);
+      fd.append("resolution", resolution);
+      const jobMode = startFrame?.url || endFrame?.url ? "frames" : (character?.id && mode === "video" ? "character" : (refImage?.url ? "refs" : "text"));
+      fd.append("mode", jobMode);
+      const slotKinds = [];
+      const characterImage = character?.image_url ? { url: character.image_url, name: `${character.name || "character"}.png` } : null;
+      for (const [kind, item] of [
+        [jobMode === "character" ? "character" : "", jobMode === "character" ? characterImage : null],
+        ["start", startFrame],
+        ["ref", refImage],
+        ["end", endFrame],
+      ]) {
+        if (!item?.url) continue;
+        const response = await fetch(resolveMedia(item.url));
+        const blob = await response.blob();
+        fd.append("files", new File([blob], item.name || "reference.png", { type: blob.type || "application/octet-stream" }));
+        slotKinds.push(kind);
+      }
+      if (slotKinds.length) fd.append("slotKinds", slotKinds.join(","));
+      patchJob(localId, { stage: "Queued", progress: 3 });
+      const created = await fetch(resolveMedia("/api/jobs"), {
+        method: "POST",
+        body: fd,
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const createdJson = await parseResponsePayload(created);
+      if (!created.ok) {
+        throw new Error(createdJson.detail || "Could not start generation.");
+      }
+      if (!createdJson?.jobId) {
+        throw new Error(createdJson.detail || "Server did not return a job id.");
+      }
+      const generation = await pollJob(createdJson.jobId, localId, { prompt, modelId: selected.id, modelName: selected.name, type: mode, provider: "" });
+      try {
+        const me = await api.get("/auth/me");
+        setUser(me.data.user);
+      } catch {}
       toast.success(`Generated with ${selected.name}`);
-      setTimeout(() => setJobs(prev => prev.filter(j => j.id !== token)), 8000);
+      setTimeout(() => setJobs(prev => prev.filter(j => j.id !== localId)), 8000);
+      onJobUpdate?.({ id: localId, status: "completed", stage: "Done", progress: 100, media_url: generation.media_url, model: selected.name, prompt: prompt.slice(0, 80) });
     } catch (e) {
-      setJobs(prev => prev.map(j => j.id === token ? { ...j, status: "error", error: e.response?.data?.detail || "Generation failed" } : j));
-      toast.error(e.response?.data?.detail || "Generation failed");
-      setTimeout(() => setJobs(prev => prev.filter(j => j.id !== token)), 4000);
+      const message = e?.message || e.response?.data?.detail || "Generation failed";
+      patchJob(localId, { status: "error", stage: "Failed", error: message });
+      toast.error(message);
+      setTimeout(() => setJobs(prev => prev.filter(j => j.id !== localId)), 5000);
+      onJobUpdate?.({ id: localId, status: "error", stage: "Failed", error: message, model: selected.name, prompt: prompt.slice(0, 80) });
     } finally { onGenerating?.(false); }
   };
 
   return (
     <>
-    <div className="fixed bottom-3 right-0 z-30 mx-auto max-w-5xl px-2 sm:px-4 transition-all duration-200 ease-linear left-0 lg:left-56">
+    <div className="fixed bottom-3 right-0 z-30 mx-auto max-w-4xl px-2 sm:px-4 transition-all duration-200 ease-linear left-0 lg:left-56">
       <div className="relative flex flex-col">
         {mode === "video" && (
           <div className="flex flex-col sm:flex-row rounded-2xl sm:rounded-t-2xl sm:rounded-b-none overflow-hidden">
@@ -278,7 +374,7 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
               </button>
             </div>
           </div>
-          {refImage && !modelSupportsImageRef && mode === "image" && (
+          {refImage && !hasImageRef && mode === "image" && (
             <div className="mt-2 text-[11px] text-amber-300/80">
               Note: {selected?.name} treats the reference as style guidance only. FLUX Kontext models use it as a full image-to-image input.
             </div>
@@ -287,7 +383,7 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
       </div>
     </div>
     {jobs.length > 0 && (
-      <div className="fixed bottom-24 left-0 right-0 z-40 mx-auto max-w-5xl px-2 sm:px-4 lg:left-56">
+      <div className="fixed bottom-24 left-0 right-0 z-40 mx-auto max-w-4xl px-2 sm:px-4 lg:left-56">
         <div className="flex flex-col gap-2">
           {jobs.map(j => (
             <div key={j.id} className={`glass rounded-xl px-4 py-3 flex items-center gap-3 ${j.status === "completed" ? "border-l-4 border-l-emerald-500" : j.status === "error" ? "border-l-4 border-l-red-500" : "border-l-4 border-l-[#a855f7]"}`}>
@@ -306,10 +402,10 @@ export default function PromptBox({ mode = "image", onResult, onGenerating, defa
               )}
               <div className="flex-1 min-w-0">
                 <div className="text-sm text-white font-medium truncate">{j.model}</div>
-                <div className="text-xs text-white/60 truncate">{j.prompt}</div>
+                <div className="text-xs text-white/60 truncate">{j.stage || j.prompt}</div>
               </div>
               <div className="text-xs text-white/50 shrink-0">
-                {j.status === "running" && `${Math.floor(j.elapsed)}s`}
+                {j.status === "running" && `${Math.floor(j.elapsed)}s${j.progress ? ` · ${j.progress}%` : ""}`}
                 {j.status === "completed" && "Done!"}
                 {j.status === "error" && "Failed"}
               </div>

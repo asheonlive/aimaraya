@@ -117,16 +117,16 @@ export default function Profile() {
             <div className="text-xs uppercase tracking-wider text-white/50">of {user.daily_video_limit ?? 12} videos left today</div>
           </div>
           <Link to="/pricing" data-testid="profile-upgrade-btn" className="btn-primary text-sm inline-flex items-center gap-2">
-            <Rocket className="w-4 h-4" /> Access Options
+            <Rocket className="w-4 h-4" /> Buy Credits
           </Link>
         </div>
         <div className="card-purple p-5" data-testid="profile-plan">
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-white/50 mb-3">
             <ShieldCheck className="w-3.5 h-3.5" /> Plan
           </div>
-          <div className="font-display text-2xl tracking-tighter mb-1">Activation Key</div>
-          <div className="text-xs text-[#a89dc9] mb-4">Access is managed through Telegram.</div>
-          <Link to="/pricing" className="text-xs text-[#c084fc] hover:underline">See access options →</Link>
+          <div className="font-display text-2xl tracking-tighter mb-1">Pay-as-you-go</div>
+          <div className="text-xs text-[#a89dc9] mb-4">Credits never expire. Top up any time.</div>
+          <Link to="/pricing" className="text-xs text-[#c084fc] hover:underline">See credit packs →</Link>
         </div>
       </div>
 

@@ -9,18 +9,26 @@ import { Sparkles } from "lucide-react";
 export default function Auth() {
   const { login, register } = useAuth();
   const nav = useNavigate();
-  const [key, setKey] = useState("");
+  const [mode, setMode] = useState("login"); // "login" | "register"
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await register(key);
-      toast.success("Welcome to AI MARAYA");
+      if (mode === "register") {
+        await register(email, password, name);
+        toast.success("Welcome to AI MARAYA");
+      } else {
+        await login(email, password);
+        toast.success("Welcome back");
+      }
       nav("/app");
     } catch (e) {
-      toast.error(e.response?.data?.detail || "Activation failed");
+      toast.error(e.response?.data?.detail || "Something went wrong");
     } finally { setLoading(false); }
   };
 
@@ -33,21 +41,45 @@ export default function Auth() {
           <Sparkles className="w-5 h-5 text-white" strokeWidth={2.5} />
         </div>
         <h1 className="font-display text-3xl tracking-tighter mb-2 text-center">
-          Activate access
+          {mode === "register" ? "Create your account" : "Welcome back"}
         </h1>
         <p className="text-sm text-[#a89dc9] mb-8 text-center">
-          Enter the activation key you received from the Telegram bot.
+          {mode === "register"
+            ? "Sign up to start generating with AI MARAYA."
+            : "Sign in to continue creating."}
         </p>
         <form onSubmit={submit} className="space-y-3">
-          <Input data-testid="auth-key" required placeholder="Activation key" value={key}
-            onChange={(e) => setKey(e.target.value)}
+          {mode === "register" && (
+            <Input data-testid="auth-name" placeholder="Name (optional)" value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="bg-[#0d0919] border-[#2a2340] rounded-xl h-12 focus-visible:ring-[#a855f7]" />
+          )}
+          <Input data-testid="auth-email" required type="email" placeholder="Email" value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="bg-[#0d0919] border-[#2a2340] rounded-xl h-12 focus-visible:ring-[#a855f7]" />
+          <Input data-testid="auth-password" required type="password" placeholder="Password" value={password}
+            onChange={(e) => setPassword(e.target.value)}
             className="bg-[#0d0919] border-[#2a2340] rounded-xl h-12 focus-visible:ring-[#a855f7]" />
           <Button data-testid="auth-submit" type="submit" disabled={loading}
             className="w-full gradient-purple hover:opacity-90 rounded-xl h-12 font-medium">
-            {loading ? "Please wait..." : "Continue"}
+            {loading ? "Please wait..." : mode === "register" ? "Create account" : "Sign in"}
           </Button>
         </form>
-        <div className="text-center mt-6 text-sm text-[#a89dc9]">Use Telegram to create or renew access.</div>
+        <div className="text-center mt-6 text-sm text-[#a89dc9]">
+          {mode === "register" ? (
+            <>Already have an account?{" "}
+              <button type="button" className="text-[#c084fc] hover:underline" onClick={() => setMode("login")}>
+                Sign in
+              </button>
+            </>
+          ) : (
+            <>New to AI MARAYA?{" "}
+              <button type="button" className="text-[#c084fc] hover:underline" onClick={() => setMode("register")}>
+                Create an account
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

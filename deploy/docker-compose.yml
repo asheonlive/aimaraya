@@ -1,0 +1,18 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+    container_name: aimaraya-backend
+    restart: always
+    ports:
+      - "127.0.0.1:8001:8001"   # only exposed to localhost; nginx proxies to it
+    env_file:
+      - backend.env
+    volumes:
+      - generated_data:/app/generated
+      - uploads_data:/app/uploads
+
+volumes:
+  generated_data:
+  uploads_data:

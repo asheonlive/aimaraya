@@ -167,18 +167,27 @@ class ComfyCloudClient:
 
     async def download_file(self, url: str, destination: Path) -> Path:
         destination.parent.mkdir(parents=True, exist_ok=True)
+        data = await self.fetch_bytes(url)
+        destination.write_bytes(data)
+        return destination
+
+    async def fetch_bytes(self, url: str) -> bytes:
+        """Download a file's bytes into memory (serverless-safe - no local disk needed)."""
         headers = self.headers if url.startswith(self.base_url) else {}
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers) as resp:
                 if resp.status >= 400:
                     raise ComfyCloudError(f"Download failed: HTTP {resp.status}")
-                destination.write_bytes(await resp.read())
-        return destination
+                return await resp.read()
 
     async def upload_input_file(self, path: Path) -> dict:
         """Upload a local media file to Comfy's input folder."""
         if not path.exists():
             raise ComfyCloudError(f"Upload file does not exist: {path}")
+        return await self.upload_input_bytes(path.read_bytes(), path.name)
+
+    async def upload_input_bytes(self, data: bytes, filename: str) -> dict:
+        """Upload in-memory bytes to Comfy's input folder (no local disk needed)."""
         token = await self._ensure_auth_token()
         headers = dict(self.headers)
         headers.update(
@@ -189,23 +198,23 @@ class ComfyCloudClient:
                 "Referer": f"{self.base_url}/",
             }
         )
-        mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        mime_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
         form = aiohttp.FormData()
-        form.add_field("file", path.read_bytes(), filename=path.name, content_type=mime_type)
+        form.add_field("file", data, filename=filename, content_type=mime_type)
         form.add_field("overwrite", "true")
         async with aiohttp.ClientSession() as session:
             async with session.post(f"{self.base_url}/api/upload/image", headers=headers, data=form) as resp:
                 text = await resp.text()
                 try:
-                    data = json.loads(text) if text else {}
+                    resp_data = json.loads(text) if text else {}
                 except json.JSONDecodeError:
-                    data = {"message": text}
+                    resp_data = {"message": text}
                 if resp.status >= 400:
-                    message = data.get("error") or data.get("message") or f"HTTP {resp.status}"
+                    message = resp_data.get("error") or resp_data.get("message") or f"HTTP {resp.status}"
                     raise ComfyCloudError(f"Upload failed: {message}")
-                if not data.get("name"):
-                    raise ComfyCloudError(f"Upload failed: missing name in response {data}")
-                return data
+                if not resp_data.get("name"):
+                    raise ComfyCloudError(f"Upload failed: missing name in response {resp_data}")
+                return resp_data
 
 
 def collect_output_files(job_details: dict) -> list[dict]:

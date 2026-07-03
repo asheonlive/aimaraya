@@ -1,20 +1,36 @@
-"""Maraya AI - Multi-model AI generation platform backend."""
+"""AI MARAYA - Multi-model AI generation platform backend.
+
+Generation is powered solely by the user's own, legitimately paid Comfy Cloud
+account (partner-API nodes for Flux, Kling, Veo, Seedance, etc). There is no
+third-party account pooling or credit-bypass integration here - only real,
+authorized API access.
+
+Media storage: generated files and uploaded reference images are stored in
+MongoDB GridFS (not local disk). This keeps the backend stateless so it can
+run on serverless platforms (Vercel) as well as a persistent VPS - local
+disk writes on serverless are ephemeral and not shared across invocations."""
 import os
+import io
+import time
 import uuid
 import base64
 import asyncio
 import logging
+import mimetypes
+from collections import defaultdict, deque
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional, List
 
 import jwt
 import bcrypt
+from bson import ObjectId
+from bson.errors import InvalidId
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Header, UploadFile, File, Form
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorGridFSBucket
 from pydantic import BaseModel, EmailStr
 
 from emergentintegrations.llm.chat import LlmChat, UserMessage
@@ -30,7 +46,6 @@ from models_catalog import (
     build_comfy_workflow,
 )
 from comfy_cloud_client import ComfyCloudClient, ComfyCloudError, collect_output_files
-from artcraft_client import ArtCraftClient, ArtCraftError, ArtCraftPool
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -43,21 +58,58 @@ EMERGENT_LLM_KEY = os.environ["EMERGENT_LLM_KEY"]
 STRIPE_API_KEY = os.environ["STRIPE_API_KEY"]
 JWT_ALG = "HS256"
 
-GENERATED_DIR = ROOT_DIR / "generated"
-GENERATED_DIR.mkdir(exist_ok=True)
-UPLOADS_DIR = ROOT_DIR / "uploads"
-UPLOADS_DIR.mkdir(exist_ok=True)
-
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
+fs_bucket = AsyncIOMotorGridFSBucket(db, bucket_name="media")
 
-app = FastAPI(title="Maraya AI API")
+app = FastAPI(title="AI MARAYA API")
 api = APIRouter(prefix="/api")
-app.mount("/api/media", StaticFiles(directory=str(GENERATED_DIR)), name="media")
-app.mount("/api/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("maraya")
+
+
+# ---------- GridFS media storage helpers ----------
+async def store_media(data: bytes, filename: str, content_type: str) -> str:
+    """Store bytes in GridFS, return the file id as a string."""
+    file_id = await fs_bucket.upload_from_stream(
+        filename, io.BytesIO(data), metadata={"contentType": content_type}
+    )
+    return str(file_id)
+
+
+async def load_media(media_id: str) -> tuple[bytes, str, str]:
+    """Return (data, content_type, filename) for a stored media id, or raise 404."""
+    try:
+        oid = ObjectId(media_id)
+    except InvalidId:
+        raise HTTPException(404, "Not found")
+    try:
+        stream = await fs_bucket.open_download_stream(oid)
+    except Exception:
+        raise HTTPException(404, "Not found")
+    data = await stream.read()
+    content_type = (stream.metadata or {}).get("contentType") or mimetypes.guess_type(stream.filename)[0] or "application/octet-stream"
+    return data, content_type, stream.filename
+
+
+async def delete_media(media_id: str) -> None:
+    try:
+        await fs_bucket.delete(ObjectId(media_id))
+    except Exception:
+        pass
+
+
+@api.get("/media/{media_id}")
+async def get_media(media_id: str):
+    data, content_type, _ = await load_media(media_id)
+    return StreamingResponse(io.BytesIO(data), media_type=content_type)
+
+
+@api.get("/uploads/{media_id}")
+async def get_upload(media_id: str):
+    data, content_type, _ = await load_media(media_id)
+    return StreamingResponse(io.BytesIO(data), media_type=content_type)
 
 # Comfy client singleton
 comfy = ComfyCloudClient(
@@ -67,36 +119,36 @@ comfy = ComfyCloudClient(
     password=os.environ.get("COMFY_PASSWORD", ""),
     firebase_api_key=os.environ.get("COMFY_FIREBASE_API_KEY", ""),
 )
-artcraft_pool = ArtCraftPool()
 
-ARTCRAFT_VIDEO_MODELS = {
-    "sora-2": "sora_2",
-    "sora-2-pro": "sora_2_pro",
-    "veo-3.1-fast": "veo_3p1_fast",
-    "veo-2": "veo_2",
-    "kling-omni": "kling_3p0_pro",
-    "seedance-pro": "seedance_2p0",
-    "seedance-fast": "seedance_2p0_bp",
-    "grok-video": "grok_imagine_video",
-    "happyhorse": "happy_horse_1p0",
-}
+# ---------- Simple in-memory rate limiter ----------
+# Per-user sliding-window limiter. No external dependency (Redis, etc.) so it
+# works out of the box on a single-process deployment. If the backend is ever
+# scaled to multiple worker processes, replace this with a shared store
+# (e.g. Redis) since in-memory state is not shared across processes.
+class RateLimiter:
+    def __init__(self):
+        self._hits: dict[str, deque] = defaultdict(deque)
+        self._lock = asyncio.Lock()
 
-ARTCRAFT_IMAGE_MODELS = {
-    "nano-banana": "nano_banana",
-    "nano-banana-2": "nano_banana_2",
-    "nano-banana-pro": "nano_banana_pro",
-    "gpt-image-2": "gpt_image_2",
-    "grok-image": "grok_image",
-    "flux-1.1-ultra": "flux_pro_1p1_ultra",
-}
+    async def check(self, key: str, limit: int, window_seconds: int) -> None:
+        now = time.monotonic()
+        async with self._lock:
+            hits = self._hits[key]
+            while hits and now - hits[0] > window_seconds:
+                hits.popleft()
+            if len(hits) >= limit:
+                retry_after = max(1, int(window_seconds - (now - hits[0])))
+                raise HTTPException(
+                    429,
+                    f"Too many requests. Try again in {retry_after}s.",
+                    headers={"Retry-After": str(retry_after)},
+                )
+            hits.append(now)
 
-def _artcraft_enabled() -> bool:
-    return os.environ.get("ARTCRAFT_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+rate_limiter = RateLimiter()
 
-def _artcraft_model_id(model: dict) -> Optional[str]:
-    if model["type"] == "video":
-        return ARTCRAFT_VIDEO_MODELS.get(model["id"])
-    return ARTCRAFT_IMAGE_MODELS.get(model["id"])
+async def rate_limit_user(user_id: str, scope: str, limit: int = 10, window_seconds: int = 60) -> None:
+    await rate_limiter.check(f"{scope}:{user_id}", limit, window_seconds)
 
 # ---------- Schemas ----------
 class RegisterReq(BaseModel):
@@ -160,7 +212,7 @@ def public_user(u: dict) -> dict:
 
 # ---------- Generation engines ----------
 async def _generate_gemini(model: dict, prompt: str, aspect_ratio: str) -> tuple[str, str]:
-    """Returns (filename, mime_ext)."""
+    """Returns (media_id, mime_ext)."""
     session_id = f"gen-{uuid.uuid4()}"
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY, session_id=session_id,
@@ -172,10 +224,11 @@ async def _generate_gemini(model: dict, prompt: str, aspect_ratio: str) -> tuple
     if not images:
         raise RuntimeError("No image returned from model.")
     img = images[0]
-    ext = "jpg" if "jpeg" in img.get("mime_type", "") else "png"
-    fname = f"{uuid.uuid4()}.{ext}"
-    (GENERATED_DIR / fname).write_bytes(base64.b64decode(img["data"]))
-    return fname, ext
+    mime_type = img.get("mime_type", "") or ""
+    ext = "jpg" if "jpeg" in mime_type else "png"
+    raw = base64.b64decode(img["data"])
+    media_id = await store_media(raw, f"gen.{ext}", mime_type or f"image/{ext}")
+    return media_id, ext
 
 
 # Models that accept an image_prompt input for image-to-image / reference guidance.
@@ -188,22 +241,24 @@ COMFY_IMAGE_INPUT_FIELD = {
 
 
 async def _generate_comfy(model: dict, prompt: str, aspect_ratio: str,
-                          ref_local_path: Optional[Path] = None,
-                          start_local_path: Optional[Path] = None,
-                          end_local_path: Optional[Path] = None,
+                          ref_media_id: Optional[str] = None,
+                          start_media_id: Optional[str] = None,
+                          end_media_id: Optional[str] = None,
                           camera_control: Optional[str] = None) -> tuple[str, str]:
-    """Submit workflow to Comfy Cloud, poll, download output.
+    """Submit workflow to Comfy Cloud, poll, download output, store it in GridFS.
     Supports reference image (image-prompt), start/end keyframes and camera control
-    for models whose `caps` declare the corresponding input fields."""
+    for models whose `caps` declare the corresponding input fields.
+    ref/start/end params are GridFS media ids (from a prior /api/upload call)."""
     extra: dict = {}
     node_counter = 3  # next available node id in workflow
     caps = model.get("caps") or {}
     workflow_extra_nodes: dict[str, dict] = {}
 
-    async def _upload_and_node(path: Path) -> Optional[str]:
+    async def _upload_and_node(media_id: str) -> Optional[str]:
         nonlocal node_counter
         try:
-            up = await comfy.upload_input_file(path)
+            data, _content_type, filename = await load_media(media_id)
+            up = await comfy.upload_input_bytes(data, filename or f"{media_id}.png")
             uploaded = up.get("name")
             if not uploaded:
                 return None
@@ -216,13 +271,13 @@ async def _generate_comfy(model: dict, prompt: str, aspect_ratio: str,
             return None
 
     # Start frame → maps to caps.start_frame field name
-    if start_local_path and caps.get("start_frame"):
-        nid = await _upload_and_node(start_local_path)
+    if start_media_id and caps.get("start_frame"):
+        nid = await _upload_and_node(start_media_id)
         if nid: extra[caps["start_frame"]] = [nid, 0]
 
     # End frame → maps to caps.end_frame
-    if end_local_path and caps.get("end_frame"):
-        nid = await _upload_and_node(end_local_path)
+    if end_media_id and caps.get("end_frame"):
+        nid = await _upload_and_node(end_media_id)
         if nid: extra[caps["end_frame"]] = [nid, 0]
 
     # Camera control
@@ -230,8 +285,8 @@ async def _generate_comfy(model: dict, prompt: str, aspect_ratio: str,
         extra[caps["camera_control"]] = camera_control
 
     # Legacy: image_prompt style reference for FLUX Kontext/etc.
-    if ref_local_path and model["id"] in COMFY_IMAGE_INPUT_FIELD and "image_prompt" not in extra:
-        nid = await _upload_and_node(ref_local_path)
+    if ref_media_id and model["id"] in COMFY_IMAGE_INPUT_FIELD and "image_prompt" not in extra:
+        nid = await _upload_and_node(ref_media_id)
         if nid:
             field = COMFY_IMAGE_INPUT_FIELD[model["id"]]
             extra[field] = [nid, 0]
@@ -240,8 +295,14 @@ async def _generate_comfy(model: dict, prompt: str, aspect_ratio: str,
     workflow.update(workflow_extra_nodes)
     prompt_id = await comfy.submit_workflow(workflow, needs_auth=True)
 
-    # Poll status (videos can take a few minutes)
-    deadline = asyncio.get_event_loop().time() + 600  # 10 min hard cap
+    # Poll status (videos can take a few minutes). This hard cap is kept
+    # comfortably under the Vercel function's `maxDuration` (see
+    # backend/vercel.json, currently 300s) so a slow job fails with a clean
+    # JSON error (and a credit refund, see the /generate except block) instead
+    # of being hard-killed by the platform with an opaque 504. If you raise
+    # maxDuration (Pro/Enterprise support up to 800s), raise this to match,
+    # leaving ~20s of buffer for the download + GridFS write that follow.
+    deadline = asyncio.get_event_loop().time() + 260
     poll_interval = 3.0
     while asyncio.get_event_loop().time() < deadline:
         try:
@@ -257,7 +318,7 @@ async def _generate_comfy(model: dict, prompt: str, aspect_ratio: str,
         await asyncio.sleep(poll_interval)
         poll_interval = min(poll_interval * 1.2, 8.0)
     else:
-        raise RuntimeError("Generation timed out after 10 minutes.")
+        raise RuntimeError("Generation is taking longer than this server allows (>260s). Slower video models may need a longer Vercel maxDuration (Pro plan) or a background-job architecture.")
 
     details = await comfy.job_details(prompt_id)
     files = collect_output_files(details)
@@ -266,75 +327,16 @@ async def _generate_comfy(model: dict, prompt: str, aspect_ratio: str,
     item = files[0]
     src_url = comfy.file_url(item)
     ext = Path(item.get("filename", "out.bin")).suffix.lstrip(".") or ("mp4" if model["type"] == "video" else "png")
-    fname = f"{uuid.uuid4()}.{ext}"
-    await comfy.download_file(src_url, GENERATED_DIR / fname)
-    return fname, ext
-
-
-async def _generate_artcraft(
-    model: dict,
-    prompt: str,
-    aspect_ratio: str,
-    duration: str,
-    resolution: str,
-    ref_local_path: Optional[Path] = None,
-    start_local_path: Optional[Path] = None,
-    end_local_path: Optional[Path] = None,
-) -> str:
-    provider_model = _artcraft_model_id(model)
-    if not provider_model:
-        raise ArtCraftError(f"{model['name']} is not mapped to ArtCraft.")
-
-    last_error: Exception | None = None
-    attempts = max(1, artcraft_pool.summary()["total"])
-    for _ in range(attempts):
-        client: ArtCraftClient | None = None
-        try:
-            client = await artcraft_pool.borrow()
-            credits = await client.credits()
-            if credits <= 0:
-                await artcraft_pool.block(client)
-                continue
-
-            if model["type"] == "video":
-                job_id = await client.generate_video(
-                    prompt=prompt,
-                    model=provider_model,
-                    aspect_ratio=aspect_ratio,
-                    duration=duration or "5s",
-                    resolution=resolution or "720p",
-                    ref_image=start_local_path or ref_local_path,
-                    end_image=end_local_path,
-                )
-                timeout = int(os.environ.get("ARTCRAFT_VIDEO_TIMEOUT_SECONDS", "900"))
-            else:
-                job_id = await client.generate_image(
-                    prompt=prompt,
-                    model=provider_model,
-                    aspect_ratio=aspect_ratio,
-                    resolution=resolution or "1K",
-                    ref_image=ref_local_path,
-                )
-                timeout = int(os.environ.get("ARTCRAFT_IMAGE_TIMEOUT_SECONDS", "300"))
-
-            url = await client.poll_job(job_id, timeout)
-            await artcraft_pool.release(client)
-            return url
-        except Exception as exc:
-            last_error = exc
-            if client:
-                text = str(exc).lower()
-                if "login" in text or "credit" in text:
-                    await artcraft_pool.block(client)
-                else:
-                    await artcraft_pool.release(client)
-    raise ArtCraftError("ArtCraft generation is unavailable.") from last_error
+    data = await comfy.fetch_bytes(src_url)
+    content_type = mimetypes.guess_type(f"out.{ext}")[0] or ("video/mp4" if model["type"] == "video" else "image/png")
+    media_id = await store_media(data, f"gen.{ext}", content_type)
+    return media_id, ext
 
 
 # ---------- Routes ----------
 @api.get("/")
 async def root():
-    return {"status": "ok", "service": "Maraya AI", "artcraft": artcraft_pool.summary()}
+    return {"status": "ok", "service": "AI MARAYA"}
 
 @api.get("/models")
 async def get_models():
@@ -345,7 +347,7 @@ async def get_packages():
     return {"packages": [{"id": k, **v} for k, v in PACKAGES.items()]}
 
 # --- Auth ---
-@api.post("/auth/register")
+@api.post("/auth/register", status_code=201)
 async def register(req: RegisterReq):
     if await db.users.find_one({"email": req.email.lower()}):
         raise HTTPException(400, "Email already registered")
@@ -374,6 +376,7 @@ async def me(user=Depends(current_user)):
 # --- Generation ---
 @api.post("/generate")
 async def generate(req: GenerateReq, user=Depends(current_user)):
+    await rate_limit_user(user["id"], "generate", limit=10, window_seconds=60)
     model = find_model(req.model_id)
     if not model:
         raise HTTPException(400, "Unknown model")
@@ -393,48 +396,35 @@ async def generate(req: GenerateReq, user=Depends(current_user)):
         raise HTTPException(402, "Insufficient credits")
 
     try:
-        # Resolve reference images
-        def _local(url: Optional[str]) -> Optional[Path]:
+        # Reference images are GridFS media ids, embedded as the last path
+        # segment of a "/api/uploads/{media_id}" url.
+        def _media_id(url: Optional[str]) -> Optional[str]:
             if not url: return None
-            fname = url.rsplit("/", 1)[-1]
-            p = UPLOADS_DIR / fname
-            return p if p.exists() else None
+            return url.rsplit("/", 1)[-1]
 
-        ref_local = _local(req.ref_image_url)
-        start_local = _local(req.start_frame_url)
-        end_local = _local(req.end_frame_url)
+        ref_media = _media_id(req.ref_image_url)
+        start_media = _media_id(req.start_frame_url)
+        end_media = _media_id(req.end_frame_url)
 
         char = None
         if req.character_id:
             char = await db.characters.find_one({"id": req.character_id, "user_id": user["id"]})
-            if char and not ref_local:
-                ref_local = UPLOADS_DIR / char["filename"]
+            if char and not ref_media:
+                ref_media = char["filename"]
 
         effective_prompt = req.prompt
         if char:
             effective_prompt = f"{req.prompt} — Featuring character '{char['name']}'"
 
-        if _artcraft_enabled() and _artcraft_model_id(model):
-            media_url = await _generate_artcraft(
-                model,
-                effective_prompt,
-                req.aspect_ratio,
-                req.duration or "5s",
-                req.resolution or ("720p" if model["type"] == "video" else "1K"),
-                ref_local_path=ref_local,
-                start_local_path=start_local,
-                end_local_path=end_local,
-            )
-            fname = media_url
-        elif model["engine_type"] == "gemini":
+        if model["engine_type"] == "gemini":
             fname, _ext = await _generate_gemini(model, effective_prompt, req.aspect_ratio)
             media_url = f"/api/media/{fname}"
         elif model["engine_type"] == "comfy":
             fname, _ext = await _generate_comfy(
                 model, effective_prompt, req.aspect_ratio,
-                ref_local_path=ref_local,
-                start_local_path=start_local,
-                end_local_path=end_local,
+                ref_media_id=ref_media,
+                start_media_id=start_media,
+                end_media_id=end_media,
                 camera_control=req.camera_control,
             )
             media_url = f"/api/media/{fname}"
@@ -469,11 +459,8 @@ async def delete_generation(gen_id: str, user=Depends(current_user)):
     doc = await db.generations.find_one({"id": gen_id})
     if not doc or doc["user_id"] != user["id"]:
         raise HTTPException(404, "Not found")
-    # Best-effort remove file
-    try:
-        (GENERATED_DIR / doc["filename"]).unlink(missing_ok=True)
-    except Exception:
-        pass
+    if doc.get("filename"):
+        await delete_media(doc["filename"])
     await db.generations.delete_one({"id": gen_id})
     return {"ok": True}
 
@@ -498,9 +485,8 @@ async def upload_ref(file: UploadFile = File(...), user=Depends(current_user)):
     ext = (file.filename.rsplit(".", 1)[-1] or "png").lower()
     if ext not in ("png", "jpg", "jpeg", "webp", "gif"):
         ext = "png"
-    fname = f"{user['id']}_{uuid.uuid4()}.{ext}"
-    (UPLOADS_DIR / fname).write_bytes(data)
-    return {"url": f"/api/uploads/{fname}", "filename": fname}
+    media_id = await store_media(data, f"ref.{ext}", file.content_type or f"image/{ext}")
+    return {"url": f"/api/uploads/{media_id}", "filename": media_id}
 
 # --- Characters (reusable references) ---
 @api.get("/characters")
@@ -522,13 +508,12 @@ async def create_character(
     ext = (file.filename.rsplit(".", 1)[-1] or "png").lower()
     if ext not in ("png", "jpg", "jpeg", "webp"):
         ext = "png"
-    fname = f"char_{user['id']}_{uuid.uuid4()}.{ext}"
-    (UPLOADS_DIR / fname).write_bytes(data)
+    media_id = await store_media(data, f"char.{ext}", file.content_type or f"image/{ext}")
     doc = {
         "id": str(uuid.uuid4()), "user_id": user["id"],
         "name": name.strip()[:60] or "Untitled",
-        "image_url": f"/api/uploads/{fname}",
-        "filename": fname,
+        "image_url": f"/api/uploads/{media_id}",
+        "filename": media_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.characters.insert_one(doc)
@@ -540,10 +525,8 @@ async def delete_character(char_id: str, user=Depends(current_user)):
     doc = await db.characters.find_one({"id": char_id})
     if not doc or doc["user_id"] != user["id"]:
         raise HTTPException(404, "Not found")
-    try:
-        (UPLOADS_DIR / doc["filename"]).unlink(missing_ok=True)
-    except Exception:
-        pass
+    if doc.get("filename"):
+        await delete_media(doc["filename"])
     await db.characters.delete_one({"id": char_id})
     return {"ok": True}
 
@@ -675,6 +658,7 @@ async def _plan_shots(concept: str, panels: int, style: str) -> list[str]:
 
 @api.post("/storyboard")
 async def create_storyboard(req: StoryboardReq, user=Depends(current_user)):
+    await rate_limit_user(user["id"], "storyboard", limit=5, window_seconds=60)
     panels = max(3, min(int(req.panels or 6), 8))
     image_model = find_model(req.image_model or "gpt-image-1")
     if not image_model or image_model.get("type") != "image" or not image_model.get("available"):
@@ -754,6 +738,7 @@ async def get_storyboard(story_id: str, user=Depends(current_user)):
 
 @api.post("/storyboard/{story_id}/animate")
 async def animate_storyboard(story_id: str, req: AnimateReq, user=Depends(current_user)):
+    await rate_limit_user(user["id"], "animate", limit=5, window_seconds=60)
     story = await db.storyboards.find_one({"id": story_id, "user_id": user["id"]})
     if not story:
         raise HTTPException(404, "Storyboard not found")
@@ -800,8 +785,14 @@ async def animate_storyboard(story_id: str, req: AnimateReq, user=Depends(curren
     return {"storyboard": story, "credits_remaining": user["credits"] - total_cost + refund}
 
 app.include_router(api)
+# Auth uses a Bearer token (Authorization header), not cookies, so browsers
+# never need `credentials: include` for this API - allow_credentials stays
+# False, which makes it safe to allow a wildcard/multi-origin list without
+# the browser-rejected "wildcard origin + credentials" combination.
+# Set CORS_ORIGINS to a comma-separated list of your real frontend domain(s)
+# in production, e.g. "https://aimaraya-web.vercel.app".
 app.add_middleware(
-    CORSMiddleware, allow_credentials=True,
+    CORSMiddleware, allow_credentials=False,
     allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
     allow_methods=["*"], allow_headers=["*"],
 )

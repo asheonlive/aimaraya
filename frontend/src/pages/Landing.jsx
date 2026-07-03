@@ -44,23 +44,23 @@ const TESTIMONIALS = [
 
 const FAQ = [
   { q: "What is AI MARAYA?", a: "The creative studio that puts every frontier model — Sora 2, Veo 3.1, FLUX 1.1 Ultra, Kling, GPT Image 2, Ideogram — behind one subscription and one daily video allowance." },
-  { q: "How does access work?", a: "Create or renew access in the AI MARAYA Telegram bot, then paste the activation key on the website to start generating." },
+  { q: "How does access work?", a: "Create a free account, buy a credit pack with Stripe, and start generating right away — no separate app or bot required." },
   { q: "Can I use outputs commercially?", a: "Paid access is intended for creator and commercial workflows, subject to the model providers' terms and acceptable-use rules." },
-  { q: "Is there a free tier?", a: "Trial access is handled through activation keys from the Telegram bot when available." },
+  { q: "Is there a free tier?", a: "New accounts start with a small free credit balance so you can try image and video models before buying a pack." },
   { q: "Which video models are live?", a: "Sora 2, Sora 2 Pro, Veo 3.1 Fast, Veo 2, Kling 3 Omni, Kling 2.5 Turbo, Kling Start→End, Kling Camera Control, Seedance Pro/Fast, Grok Imagine, HappyHorse, Luma Ray Flash 2, PixVerse, MiniMax Hailuo — plus more shipping monthly." },
 ];
 
 const PLANS = [
-  { id: "trial", name: "Trial", monthly: 0, yearly: 0, credits: "Activation key", perks: ["Short website access", "Image and video models", "Telegram code required"] },
-  { id: "access", name: "AI MARAYA Access", monthly: 10, yearly: 10, credits: "7 days", perks: ["ArtCraft engine", "Video and image generation", "Renew from Telegram"], popular: true },
+  { id: "starter", name: "Starter", monthly: 12, yearly: 12, credits: "3,000 credits", perks: ["All image & video models", "No expiry", "Sign up in seconds"] },
+  { id: "pro", name: "Pro", monthly: 29, yearly: 29, credits: "10,000 credits", perks: ["All image & video models", "Priority queue", "No expiry"], popular: true },
 ];
 
 const SEEDANCE_SHOWCASE = [
-  { src: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",  poster: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800", title: "Neon Metropolis",     prompt: "Cyberpunk cityscape at dusk, rain reflections, cinematic drone shot" },
-  { src: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",poster: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800", title: "Luxury Drive",        prompt: "Sleek sports car cruising coastal highway, golden hour, anamorphic" },
-  { src: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4", poster: "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=800", title: "Desert Odyssey",     prompt: "Traveler crossing red dunes, wind, cinematic scale" },
-  { src: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",     poster: "https://images.unsplash.com/photo-1541643600914-78b084683601?w=800", title: "Perfume Reveal",     prompt: "Slow-mo perfume bottle rotation, macro lens, studio lighting" },
-  { src: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",poster:"https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800", title: "Michelin Kitchen",   prompt: "Chef finishing a plate, steam swirls, cinematic close-up" },
+  { src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",  poster: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800", title: "Neon Metropolis",     prompt: "Cyberpunk cityscape at dusk, rain reflections, cinematic drone shot" },
+  { src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",poster: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800", title: "Luxury Drive",        prompt: "Sleek sports car cruising coastal highway, golden hour, anamorphic" },
+  { src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4", poster: "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=800", title: "Desert Odyssey",     prompt: "Traveler crossing red dunes, wind, cinematic scale" },
+  { src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",     poster: "https://images.unsplash.com/photo-1541643600914-78b084683601?w=800", title: "Perfume Reveal",     prompt: "Slow-mo perfume bottle rotation, macro lens, studio lighting" },
+  { src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",poster:"https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800", title: "Michelin Kitchen",   prompt: "Chef finishing a plate, steam swirls, cinematic close-up" },
 ];
 
 // ------------------------- Hero showcase columns -----------------------
@@ -167,11 +167,11 @@ export default function Landing() {
               <span className="text-outline">AI content</span> in seconds
             </h1>
             <p className="text-lg text-[#a89dc9] max-w-2xl mx-auto leading-relaxed mb-10 fade-in" style={{ animationDelay: "0.15s" }}>
-              One studio. Every frontier model. Cinematic videos, hyper-realistic images, characters, product ads and storyboards with Telegram-powered access.
+              One studio. Every frontier model. Cinematic videos, hyper-realistic images, characters, product ads and storyboards — all from one account.
             </p>
             <div className="flex flex-wrap gap-4 justify-center mb-16 fade-in" style={{ animationDelay: "0.3s" }}>
               <Link to="/auth?mode=register" data-testid="hero-start" className="btn-primary inline-flex items-center gap-2 relative pulse-ring">
-                Enter Activation Key <ArrowRight className="w-4 h-4" />
+                Start Creating <ArrowRight className="w-4 h-4" />
               </Link>
               <Link to="/models" data-testid="hero-models" className="btn-ghost inline-flex items-center gap-2">
                 <Play className="w-4 h-4" /> See all 30 models
@@ -191,7 +191,7 @@ export default function Landing() {
               <div className="pointer-events-auto pill bg-black/70 backdrop-blur-md border-white/20 !py-2 !px-4 font-mono text-[11px] uppercase tracking-widest">
                 <span className="text-[#c084fc]">30 models</span>
                 <span className="mx-2 text-white/40">·</span>
-                <span className="text-emerald-400">Telegram access</span>
+                <span className="text-emerald-400">Instant access</span>
                 <span className="mx-2 text-white/40">·</span>
                 <span className="text-white/80">Live</span>
               </div>
@@ -285,7 +285,7 @@ export default function Landing() {
             <ArrowRight className="w-4 h-4" />
           </Link>
           <div className="text-xs text-[#a89dc9] mt-3 font-mono">
-            Use your Telegram activation key to create on the website
+            Sign up free and start generating in seconds
           </div>
         </div>
       </section>
@@ -486,9 +486,9 @@ export default function Landing() {
             Ready to create<br/>
             <span className="gradient-text">something remarkable?</span>
           </h2>
-          <p className="text-[#a89dc9] max-w-lg mx-auto mb-10">Create or renew access in Telegram, then continue here with your activation key.</p>
+          <p className="text-[#a89dc9] max-w-lg mx-auto mb-10">Create a free account and start generating in seconds.</p>
           <Link to="/auth?mode=register" data-testid="cta-final" className="btn-primary inline-flex items-center gap-2 text-base pulse-ring relative">
-            Enter activation key <ArrowRight className="w-4 h-4" />
+            Start creating <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </section>

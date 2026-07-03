@@ -3,8 +3,8 @@ import React from "react";
 const SECTIONS = [
   { h: "1. Acceptance", b: "By creating an account or using AI MARAYA, you agree to these Terms of Service. If you don't agree, please don't use the service." },
   { h: "2. The Service", b: "AI MARAYA is a hosted AI generation platform providing text-to-image and text-to-video via curated frontier models. Availability, model lineup and daily allowances may evolve." },
-  { h: "3. Account & Eligibility", b: "You must be at least 13 years old. You're responsible for keeping your Telegram account and activation keys secure." },
-  { h: "4. Access & Payment", b: "Website access is activated using keys created or renewed through the AI MARAYA Telegram bot. Access duration and availability are shown when the key is issued." },
+  { h: "3. Account & Eligibility", b: "You must be at least 13 years old. You're responsible for keeping your account credentials secure." },
+  { h: "4. Access & Payment", b: "New accounts receive a small free credit balance. Additional credits are purchased directly through Stripe checkout on the website and never expire." },
   { h: "5. Acceptable Use", b: "You may not use AI MARAYA to generate CSAM, non-consensual sexual content, deepfakes intended to defame or harass, content promoting real-world violence, or content that infringes third-party rights. We reserve the right to suspend accounts that violate this policy." },
   { h: "6. Content Ownership", b: "You own the prompts you write and the outputs generated for you, subject to the underlying model providers' terms." },
   { h: "7. Service Availability", b: "We aim for high availability but don't guarantee uninterrupted service. Model providers may occasionally return errors or reject prompts." },
