@@ -73,18 +73,15 @@ class ComfyCloudClient:
             if not token:
                 raise ComfyCloudError("Comfy login failed: missing idToken.")
 
-            session_headers = dict(self.headers)
-            session_headers.update({
-                "Accept": "application/json",
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-                "Origin": self.base_url,
-                "Referer": f"{self.base_url}/",
-            })
             async with session.post(
                 f"{self.base_url}/api/auth/session",
-                headers=session_headers,
-                json={},
+                headers={
+                    "Accept": "*/*",
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "Origin": self.base_url,
+                    "Referer": f"{self.base_url}/",
+                },
             ) as resp:
                 session_data = await resp.json(content_type=None)
                 if resp.status >= 400 or not session_data.get("success"):
