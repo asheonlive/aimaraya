@@ -93,12 +93,34 @@ EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
 STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "")
 JWT_ALG = "HS256"
 
-client = AsyncIOMotorClient(MONGO_URL)
-db = client[DB_NAME]
-fs_bucket = AsyncIOMotorGridFSBucket(db, bucket_name="media")
+_db_loop = None
+
+def _bind_db_to_loop() -> None:
+    """(Re)create the Mongo client bound to the currently-running event loop.
+
+    Vercel's Python serverless runtime can reuse a warm container across
+    invocations, handing each one a *new* event loop. Motor's
+    AsyncIOMotorClient caches asyncio primitives tied to the loop it was
+    created on, so reusing it under a different loop raises "Task ...
+    attached to a different loop". Rebinding at the start of each request
+    (see the middleware below) is cheap - Motor's connection pool is lazy -
+    and keeps every db.<collection>/fs_bucket call correct."""
+    global client, db, fs_bucket, _db_loop
+    client = AsyncIOMotorClient(MONGO_URL)
+    db = client[DB_NAME]
+    fs_bucket = AsyncIOMotorGridFSBucket(db, bucket_name="media")
+    _db_loop = asyncio.get_event_loop()
+
+_bind_db_to_loop()
 
 app = FastAPI(title="AI MARAYA API")
 api = APIRouter(prefix="/api")
+
+@app.middleware("http")
+async def _ensure_db_event_loop(request: Request, call_next):
+    if _db_loop is not asyncio.get_event_loop():
+        _bind_db_to_loop()
+    return await call_next(request)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("maraya")
