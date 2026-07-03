@@ -47,7 +47,22 @@ from models_catalog import (
     build_comfy_workflow,
 )
 from comfy_cloud_client import ComfyCloudClient, ComfyCloudError, collect_output_files
-from artlist_client import test_login as artlist_test_login
+
+# Playwright (used only by the Artlist.io login probe below) is a heavy,
+# browser-driving dependency that doesn't reliably run in a serverless
+# function - it may resolve at build time but still be missing at runtime
+# depending on the platform. Import it defensively so a missing/broken
+# Playwright install takes down only that one debug endpoint, not the
+# entire API.
+try:
+    from artlist_client import test_login as artlist_test_login
+    _ARTLIST_AVAILABLE = True
+except Exception as _artlist_import_err:  # pragma: no cover
+    artlist_test_login = None
+    _ARTLIST_AVAILABLE = False
+    logging.getLogger("maraya").warning(
+        "Artlist login probe disabled - import failed: %s", _artlist_import_err
+    )
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -352,6 +367,14 @@ async def artlist_login_probe(x_debug_token: Optional[str] = Header(None)):
     `ARTLIST_DEBUG_TOKEN` to receive a screenshot URL for debugging.
     Without a valid debug token, no screenshot is captured.
     """
+    if not _ARTLIST_AVAILABLE:
+        raise HTTPException(
+            501,
+            "Artlist login probe isn't available in this deployment "
+            "(Playwright/browser automation isn't supported here). "
+            "Run this check from the VPS/Docker deployment instead.",
+        )
+
     debug_token = os.environ.get("ARTLIST_DEBUG_TOKEN", "").strip()
     include_screenshot = bool(debug_token and x_debug_token == debug_token)
 
