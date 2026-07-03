@@ -53,6 +53,7 @@ from artcraft_client import (
     ArtCraftAccount, ArtCraftClient, ArtCraftError,
     ARTCRAFT_VIDEO_MODELS, ARTCRAFT_IMAGE_MODELS,
 )
+from artlist_relay_client import generate_video_via_relay, ArtlistRelayError
 
 # Playwright (used only by the Artlist.io login probe below) is a heavy,
 # browser-driving dependency that doesn't reliably run in a serverless
@@ -162,6 +163,14 @@ artcraft = (
     ArtCraftClient(ArtCraftAccount(_artcraft_email, _artcraft_password))
     if _artcraft_email and _artcraft_password else None
 )
+
+# Artlist.io (last-resort fallback, video only) - relayed through a small
+# service on the user's own VPS since Artlist needs a real browser
+# (Playwright), which can't run in this serverless function. Only the
+# relay's URL + a shared secret live here; the real ARTLIST_EMAIL/PASSWORD
+# stay on the VPS and are never sent to or stored by Vercel.
+ARTLIST_RELAY_URL = os.environ.get("ARTLIST_RELAY_URL", "")
+ARTLIST_RELAY_SECRET = os.environ.get("ARTLIST_RELAY_SECRET", "")
 
 # ---------- Simple in-memory rate limiter ----------
 # Per-user sliding-window limiter. No external dependency (Redis, etc.) so it
@@ -428,6 +437,26 @@ async def _generate_artcraft(model: dict, prompt: str, aspect_ratio: str,
     return media_id, ext
 
 
+async def _generate_artlist(model: dict, prompt: str, aspect_ratio: str,
+                             duration: str = "5s", resolution: str = "720p") -> tuple[str, str]:
+    """Generate via the user's real Artlist.io account, relayed through a
+    small service on their VPS (Artlist needs a real browser, which can't
+    run in this serverless function). Used only as the last-resort fallback
+    (see /generate) when both Comfy Cloud and ArtCraft have failed."""
+    if not (ARTLIST_RELAY_URL and ARTLIST_RELAY_SECRET):
+        raise ArtlistRelayError(
+            "Artlist relay isn't configured (missing ARTLIST_RELAY_URL/ARTLIST_RELAY_SECRET)."
+        )
+    timeout = int(os.environ.get("ARTLIST_RELAY_TIMEOUT_SECONDS", "260"))
+    data = await generate_video_via_relay(
+        ARTLIST_RELAY_URL, ARTLIST_RELAY_SECRET,
+        prompt=prompt, model_name=model.get("id", ""), duration=duration,
+        aspect_ratio=aspect_ratio, resolution=resolution, timeout=timeout,
+    )
+    media_id = await store_media(data, "artlist_gen.mp4", "video/mp4")
+    return media_id, "mp4"
+
+
 # ---------- Routes ----------
 @api.get("/")
 async def root():
@@ -564,6 +593,8 @@ async def generate(req: GenerateReq, user=Depends(current_user)):
             fname, _ext = await _generate_gemini(model, effective_prompt, req.aspect_ratio)
             media_url = f"/api/media/{fname}"
         elif model["engine_type"] == "comfy":
+            fname = None
+            last_err: Optional[Exception] = None
             try:
                 fname, _ext = await _generate_comfy(
                     model, effective_prompt, req.aspect_ratio,
@@ -573,20 +604,42 @@ async def generate(req: GenerateReq, user=Depends(current_user)):
                     camera_control=req.camera_control,
                 )
             except Exception as comfy_err:
-                # Automatic fallback: if Comfy Cloud fails/times out and this
-                # model has a known ArtCraft equivalent on the user's own
-                # ArtCraft account, retry there before giving up entirely.
-                has_fallback = artcraft and model["id"] in (
+                last_err = comfy_err
+                # Automatic fallback #1: if Comfy Cloud fails/times out and
+                # this model has a known ArtCraft equivalent on the user's
+                # own ArtCraft account, retry there.
+                has_artcraft_fallback = artcraft and model["id"] in (
                     ARTCRAFT_VIDEO_MODELS if model["type"] == "video" else ARTCRAFT_IMAGE_MODELS
                 )
-                if not has_fallback:
-                    raise
-                logger.warning("Comfy failed for %s (%s), falling back to ArtCraft", model["id"], comfy_err)
-                fname, _ext = await _generate_artcraft(
-                    model, effective_prompt, req.aspect_ratio,
-                    ref_media_id=ref_media, duration=req.duration or "5s",
-                    resolution=req.resolution or "720p",
-                )
+                if has_artcraft_fallback:
+                    logger.warning("Comfy failed for %s (%s), falling back to ArtCraft", model["id"], comfy_err)
+                    try:
+                        fname, _ext = await _generate_artcraft(
+                            model, effective_prompt, req.aspect_ratio,
+                            ref_media_id=ref_media, duration=req.duration or "5s",
+                            resolution=req.resolution or "720p",
+                        )
+                        last_err = None
+                    except Exception as artcraft_err:
+                        last_err = artcraft_err
+
+                # Automatic fallback #2: if Comfy and ArtCraft both failed
+                # (or ArtCraft has no mapping for this model) and it's a
+                # video model, try the user's Artlist.io account via the
+                # VPS relay - the last resort, since it's the slowest path.
+                if last_err is not None and model["type"] == "video" and ARTLIST_RELAY_URL:
+                    logger.warning("Comfy/ArtCraft failed for %s, falling back to Artlist relay", model["id"])
+                    try:
+                        fname, _ext = await _generate_artlist(
+                            model, effective_prompt, req.aspect_ratio,
+                            duration=req.duration or "5s", resolution=req.resolution or "720p",
+                        )
+                        last_err = None
+                    except Exception as artlist_err:
+                        last_err = artlist_err
+
+                if last_err is not None:
+                    raise last_err
             media_url = f"/api/media/{fname}"
         else:
             raise RuntimeError(f"Unknown engine_type: {model['engine_type']}")

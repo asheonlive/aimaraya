@@ -6,7 +6,7 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 300,
-      "excludeFiles": "{frontend/**,deploy/**,memory/**,test_reports/**,_QUARANTINE_REVIEW_DELETE_ME/**,backend/tests/**,*.md}"
+      "excludeFiles": "{frontend/**,deploy/**,memory/**,test_reports/**,_QUARANTINE_REVIEW_DELETE_ME/**,backend/tests/**,aimaraya-web/**,*.md}"
     }
   },
   "rewrites": [
