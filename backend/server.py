@@ -16,6 +16,7 @@ import uuid
 import base64
 import asyncio
 import logging
+import tempfile
 import mimetypes
 from collections import defaultdict, deque
 from datetime import datetime, timezone, timedelta
@@ -46,6 +47,7 @@ from models_catalog import (
     build_comfy_workflow,
 )
 from comfy_cloud_client import ComfyCloudClient, ComfyCloudError, collect_output_files
+from artlist_client import test_login as artlist_test_login
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -337,6 +339,47 @@ async def _generate_comfy(model: dict, prompt: str, aspect_ratio: str,
 @api.get("/")
 async def root():
     return {"status": "ok", "service": "AI MARAYA"}
+
+
+# --- Artlist.io login probe (Playwright) ---
+@api.post("/artlist/test-login")
+async def artlist_login_probe(x_debug_token: Optional[str] = Header(None)):
+    """Headless Playwright probe against https://artlist.io/login.
+
+    Uses ARTLIST_EMAIL / ARTLIST_PASSWORD from backend env.
+
+    Optional: send header `X-Debug-Token: <value>` matching env
+    `ARTLIST_DEBUG_TOKEN` to receive a screenshot URL for debugging.
+    Without a valid debug token, no screenshot is captured.
+    """
+    debug_token = os.environ.get("ARTLIST_DEBUG_TOKEN", "").strip()
+    include_screenshot = bool(debug_token and x_debug_token == debug_token)
+
+    # Playwright can only write a screenshot to a real filesystem path, so we
+    # use a local temp file as scratch space, then move the bytes into GridFS
+    # (same serverless-safe media storage as the rest of the app) and discard
+    # the temp file. /tmp is writable (though ephemeral) on Vercel functions.
+    screenshot_path: Optional[str] = None
+    tmp_path: Optional[Path] = None
+    if include_screenshot:
+        fname = f"artlist_login_{uuid.uuid4().hex[:8]}.png"
+        tmp_path = Path(tempfile.gettempdir()) / fname
+        screenshot_path = str(tmp_path)
+
+    result = await artlist_test_login(
+        email=os.environ.get("ARTLIST_EMAIL"),
+        password=os.environ.get("ARTLIST_PASSWORD"),
+        headless=True,
+        screenshot_path=screenshot_path,
+    )
+    payload = result.to_dict()
+    if include_screenshot and result.screenshot_path and tmp_path and tmp_path.exists():
+        media_id = await store_media(tmp_path.read_bytes(), fname, "image/png")
+        payload["screenshot_url"] = f"/api/media/{media_id}"
+        tmp_path.unlink(missing_ok=True)
+    payload.pop("screenshot_path", None)
+    payload["email"] = os.environ.get("ARTLIST_EMAIL", "")
+    return payload
 
 @api.get("/models")
 async def get_models():

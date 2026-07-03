@@ -4,7 +4,7 @@
     "critical": [
       {
         "endpoint": "POST /api/generate",
-        "issue": "media_url is built from request.base_url which resolves to the internal forwarded URL http://ai-canvas-151.cluster-5.preview.emergentcf.cloud (HTTP, port 80). The same file is reachable at https://ai-canvas-151.preview.emergentagent.com/api/media/<file> (verified 200 image/jpeg). Fix: either return a relative URL (/api/media/<file>) and let the frontend prefix REACT_APP_BACKEND_URL, OR build media_url from an explicit PUBLIC_BASE_URL env var, OR honor X-Forwarded-Proto/Host headers when constructing the URL.",
+        "issue": "media_url is built from request.base_url which resolves to the internal forwarded URL http://ai-canvas-151.cluster-5.preview.emergentcf.cloud (HTTP, port 80). The same file is reachable at https://kling-model-override.preview.emergentagent.com/api/media/<file> (verified 200 image/jpeg). Fix: either return a relative URL (/api/media/<file>) and let the frontend prefix REACT_APP_BACKEND_URL, OR build media_url from an explicit PUBLIC_BASE_URL env var, OR honor X-Forwarded-Proto/Host headers when constructing the URL.",
         "priority": "CRITICAL"
       }
     ],
