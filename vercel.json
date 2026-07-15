@@ -1,8 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null,
   "buildCommand": "cd frontend && CI=false yarn build",
-  "installCommand": "(! [ -d .vercel/python/.venv ] || uv pip install -r requirements.txt) && cd frontend && yarn install --network-timeout 600000",
+  "installCommand": "cd frontend && yarn install --network-timeout 600000",
   "outputDirectory": "frontend/build",
   "functions": {
     "api/index.py": {
